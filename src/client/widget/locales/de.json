@@ -1,0 +1,16 @@
+{
+  "serverTitle": "Music-Widget-Server läuft nicht",
+  "serverText": "Starte den lokalen Server. Diese Quelle verbindet sich automatisch erneut.",
+  "checkingTitle": "Spotify wird verbunden",
+  "checkingText": "Der Wiedergabestatus wird geprüft...",
+  "notAuthorizedTitle": "Spotify ist nicht verbunden",
+  "notAuthorizedText": "Öffne das Dashboard und schließe die Spotify-Einrichtung ab.",
+  "reauthorizeTitle": "Spotify erneut verbinden",
+  "reauthorizeText": "Die Spotify-Autorisierung ist abgelaufen. Öffne zum erneuten Verbinden das Dashboard.",
+  "rateLimitedTitle": "Spotify begrenzt Anfragen vorübergehend",
+  "rateLimitedText": "Das Widget versucht es automatisch erneut.",
+  "errorTitle": "Spotify-Verbindungsfehler",
+  "errorText": "Das Widget versucht die Verbindung automatisch erneut.",
+  "openDashboard": "Dashboard öffnen",
+  "openSpotify": "In Spotify öffnen"
+}

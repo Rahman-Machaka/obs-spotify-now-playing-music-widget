@@ -1,0 +1,16 @@
+{
+  "serverTitle": "Music Widget server is not running",
+  "serverText": "Start the local server. This source reconnects automatically.",
+  "checkingTitle": "Connecting to Spotify",
+  "checkingText": "Checking playback status...",
+  "notAuthorizedTitle": "Spotify is not connected",
+  "notAuthorizedText": "Open the dashboard and complete Spotify setup.",
+  "reauthorizeTitle": "Reconnect Spotify",
+  "reauthorizeText": "Spotify authorization has expired. Open the dashboard to reconnect.",
+  "rateLimitedTitle": "Spotify is temporarily limiting requests",
+  "rateLimitedText": "The widget will retry automatically.",
+  "errorTitle": "Spotify connection error",
+  "errorText": "The widget will keep retrying automatically.",
+  "openDashboard": "Open dashboard",
+  "openSpotify": "Open in Spotify"
+}

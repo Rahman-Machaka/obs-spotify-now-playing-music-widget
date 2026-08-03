@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OBS Music Widget Bootstrap</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+      body { display: grid; place-items: center; font-family: Inter, system-ui, sans-serif; }
+      .status { position: relative; z-index: 1; width: min(calc(100% - 24px), 430px); display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; border: 1px solid #343844; border-radius: 14px; color: #f5f6fa; background: #14161def; box-shadow: 0 8px 28px #0009; }
+      .symbol { flex: 0 0 30px; width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #d8a94f66; border-radius: 50%; color: #f2c66f; background: #d8a94f14; font-size: 15px; font-weight: 800; }
+      strong { display: block; font-size: 14px; line-height: 20px; }
+      p { margin: 4px 0 0; color: #aeb3c1; font-size: 11px; line-height: 16px; }
+    </style>
+  </head>
+  <body>
+    <div class="status" id="status" role="status" aria-live="polite">
+      <span class="symbol" aria-hidden="true">!</span>
+      <div><strong id="status-title"></strong><p id="status-text"></p></div>
+    </div>
+    <script>
+      const widgetBaseUrl = "http://127.0.0.1:3847/widget?preset=";
+      const healthUrl = "http://127.0.0.1:3847/api/health";
+      const messages = {
+        de: {
+          title: "Music-Widget-Server läuft nicht",
+          text: "Starte den lokalen Server. Diese Quelle verbindet sich automatisch erneut."
+        },
+        en: {
+          title: "Music Widget server is not running",
+          text: "Start the local server. This source reconnects automatically."
+        }
+      };
+      const language = navigator.language.toLowerCase().startsWith("de") ? "de" : "en";
+      const requestedPreset = new URLSearchParams(location.search).get("preset");
+      const message = messages[language];
+      document.documentElement.lang = language;
+      document.getElementById("status-title").textContent = message.title;
+      document.getElementById("status-text").textContent = message.text;
+      let retry;
+
+      async function connect() {
+        clearTimeout(retry);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2500);
+        try {
+          const response = await fetch(healthUrl, { cache: "no-store", signal: controller.signal });
+          if (!response.ok) throw new Error(`Health check failed: ${response.status}`);
+          const health = await response.json();
+          if (health.service !== "obs-music-widget" && !(health.ok === true && Number.isInteger(health.pid))) throw new Error("Unexpected local service");
+          const preset = requestedPreset || (typeof health.activePreset === "string" && health.activePreset ? health.activePreset : "main");
+          window.location.replace(`${widgetBaseUrl}${encodeURIComponent(preset)}&boot=${Date.now()}`);
+        } catch {
+          retry = setTimeout(connect, 3000);
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+      connect();
+    </script>
+  </body>
+</html>
