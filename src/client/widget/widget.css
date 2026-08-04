@@ -11,6 +11,12 @@ html, body, #widget-root { width: 100%; height: 100%; margin: 0; overflow: hidde
 .widget-status p { margin: 4px 0 0; color: #aeb3c1; font-size: 11px; line-height: 16px; }
 .widget-status a { display: inline-block; margin-top: 9px; color: #c797ef; font-size: 11px; font-weight: 700; text-decoration: none; }
 .widget-status a:hover { color: #dfb8ff; text-decoration: underline; }
+.widget-status.status-enter-none { opacity: 1; }
+.widget-status.status-enter-fade { animation: reveal-fade .45s ease-out both; }
+.widget-status.status-enter-slide-left { animation: reveal-slide-left .58s cubic-bezier(.22,1,.36,1) both; }
+.widget-status.status-enter-slide-right { animation: reveal-slide-right .58s cubic-bezier(.22,1,.36,1) both; }
+.widget-status.status-enter-slide-top { animation: reveal-slide-top .58s cubic-bezier(.22,1,.36,1) both; }
+.widget-status.status-enter-slide-bottom { animation: reveal-slide-bottom .58s cubic-bezier(.22,1,.36,1) both; }
 .widget { --panel: #141519; --text: #f6f6f7; --muted: #b5b5bd; --panel-border: #ffffff18; --panel-inset: #0003; --panel-shadow: #0008; display: grid; grid-template-columns: 108px repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 0; width: 100%; height: 100%; padding: 4px; color: var(--text); font-family: var(--font), system-ui, sans-serif; opacity: 1; transform-origin: center; transition: grid-template-columns .36s cubic-bezier(.2,0,0,1), grid-template-rows .36s cubic-bezier(.2,0,0,1), opacity .3s ease; }
 .widget.is-idle { opacity: var(--idle-opacity); }
 .widget.without-cover { grid-template-columns: 0px repeat(2, minmax(0, 1fr)); }
@@ -159,4 +165,4 @@ html, body, #widget-root { width: 100%; height: 100%; margin: 0; overflow: hidde
 @keyframes hide-slide-right { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(6px); } }
 @keyframes hide-slide-top { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-6px); } }
 @keyframes hide-slide-bottom { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(6px); } }
-@media (prefers-reduced-motion: reduce) { .widget, .widget * { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .widget-status, .widget, .widget * { animation: none !important; transition: none !important; } }

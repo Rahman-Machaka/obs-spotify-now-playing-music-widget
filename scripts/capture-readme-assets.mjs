@@ -40,7 +40,9 @@ const demoCover = Buffer.from(`
 
 const demoScript = `(() => {
   const layoutNames = new Set(["boxy", "compact", "portrait", "minimal"]);
-  const requestedLayout = new URL(location.href).searchParams.get("captureLayout");
+  const captureParams = new URL(location.href).searchParams;
+  const requestedLayout = captureParams.get("captureLayout");
+  const startupDelay = captureParams.has("captureStartupDelay") ? 600 : 20;
   const layout = layoutNames.has(requestedLayout) ? requestedLayout : "boxy";
   const preset = {
     name: "Main",
@@ -106,7 +108,7 @@ const demoScript = `(() => {
         this.readyState = DemoWebSocket.OPEN;
         this.onopen?.({ type: "open" });
         this.onmessage?.({ data: JSON.stringify({ type: "snapshot", config, playback }) });
-      }, 20);
+      }, startupDelay);
     }
     close() {
       sockets.delete(this);
@@ -118,13 +120,17 @@ const demoScript = `(() => {
   window.fetch = async (input, init = {}) => {
     const url = new URL(typeof input === "string" ? input : input.url, location.href);
     if (url.pathname === "/api/config") {
+      if (startupDelay > 20) await new Promise((resolve) => setTimeout(resolve, startupDelay));
       if ((init.method ?? "GET").toUpperCase() === "PUT") {
         config = JSON.parse(init.body);
         broadcast({ type: "config", config });
       }
       return new Response(JSON.stringify(config), { status: 200, headers: { "content-type": "application/json" } });
     }
-    if (url.pathname === "/api/playback") return new Response(JSON.stringify(playback), { status: 200, headers: { "content-type": "application/json" } });
+    if (url.pathname === "/api/playback") {
+      if (startupDelay > 20) await new Promise((resolve) => setTimeout(resolve, startupDelay));
+      return new Response(JSON.stringify(playback), { status: 200, headers: { "content-type": "application/json" } });
+    }
     if (url.pathname === "/api/system/bootstrap") return new Response(JSON.stringify({ url: "file:///C:/OBS/obs-bootstrap.html" }), { status: 200, headers: { "content-type": "application/json" } });
     return nativeFetch(input, init);
   };
@@ -391,6 +397,29 @@ async function main() {
       });
     });
     await client.send("Page.addScriptToEvaluateOnNewDocument", { source: demoScript });
+
+    await client.send("Emulation.setDeviceMetricsOverride", { width: layouts.boxy.width, height: layouts.boxy.height, deviceScaleFactor: 1, mobile: false });
+    await client.send("Page.navigate", { url: `${baseUrl}/widget?captureLayout=boxy&captureStartupDelay=1` });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const startupFrame = (await client.send("Runtime.evaluate", {
+      expression: `({
+        hasWidget: Boolean(document.querySelector(".widget")),
+        hasStatus: Boolean(document.querySelector(".widget-status")),
+        rootChildren: document.querySelector("#widget-root")?.childElementCount ?? -1
+      })`,
+      returnByValue: true
+    })).result.value;
+    if (startupFrame.hasWidget || startupFrame.hasStatus || startupFrame.rootChildren !== 0) {
+      throw new Error("The widget did not keep its first connection-check frame transparent.");
+    }
+    await waitForPage(client, ".widget.is-visible");
+    const startupAnimation = (await client.send("Runtime.evaluate", {
+      expression: "getComputedStyle(document.querySelector('.widget .metadata')).animationName",
+      returnByValue: true
+    })).result.value;
+    if (startupAnimation !== "reveal-slide-left") {
+      throw new Error("The widget did not use the selected entrance animation after startup.");
+    }
 
     await navigate(client, "/dashboard", 1600, 1000, ".app-shell");
     await capture(client, join(outputDirectory, "dashboard.png"));

@@ -10,6 +10,8 @@ import { widgetLanguage, widgetTranslator, type WidgetTranslationKey } from "./i
 
 const emptyPlayback: PlaybackState = { connected: false, status: "checking", error: null, retryAt: null, isPlaying: false, progressMs: 0, observedAt: Date.now(), item: null, lastPlayback: null };
 const COVER_REFLOW_DURATION_MS = 360;
+const HEALTH_CHECK_TIMEOUT_MS = 1500;
+type ServerConnectionState = "checking" | "online" | "offline";
 const fallbackTextStyle: Preset["textStyle"] = {
   color: null,
   autoContrast: false,
@@ -32,8 +34,8 @@ export function Widget() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [playback, setPlayback] = useState<PlaybackState>(emptyPlayback);
   const [progress, setProgress] = useState(0);
-  const [visible, setVisible] = useState(true);
-  const [serverConnected, setServerConnected] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [serverConnection, setServerConnection] = useState<ServerConnectionState>("checking");
   const [coverColor, setCoverColor] = useState("#30333b");
   const [coverContentReady, setCoverContentReady] = useState(true);
   const [idleMediaFailed, setIdleMediaFailed] = useState(false);
@@ -45,34 +47,68 @@ export function Widget() {
   }, [config?.language]);
 
   useEffect(() => {
-    void Promise.all([
-      fetch("/api/config").then((response) => response.json()),
-      fetch("/api/playback").then((response) => response.json())
-    ]).then(([initialConfig, initialPlayback]) => {
-      setConfig(initialConfig as AppConfig);
-      setPlayback(initialPlayback as PlaybackState);
-    }).catch(() => undefined);
-
     let retryTimer: number;
     let stopped = false;
     let socket: WebSocket | undefined;
+
+    const readJson = async (path: string) => {
+      const response = await fetch(path, { cache: "no-store" });
+      if (!response.ok) throw new Error(`${path}: ${response.status}`);
+      return response.json();
+    };
+    const confirmServerAvailability = async () => {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
+      try {
+        const response = await fetch("/api/health", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error(`Health check failed: ${response.status}`);
+        const health = await response.json() as { service?: unknown; ok?: unknown; pid?: unknown };
+        if (health.service !== "obs-music-widget" && !(health.ok === true && Number.isInteger(health.pid))) {
+          throw new Error("Unexpected local service");
+        }
+        if (!stopped) setServerConnection("online");
+      } catch {
+        if (!stopped && socket?.readyState !== WebSocket.OPEN) setServerConnection("offline");
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    };
+
+    void Promise.all([readJson("/api/config"), readJson("/api/playback")])
+      .then(([initialConfig, initialPlayback]) => {
+        if (stopped) return;
+        setConfig(initialConfig as AppConfig);
+        setPlayback(initialPlayback as PlaybackState);
+        setServerConnection("online");
+      })
+      .catch(() => { void confirmServerAvailability(); });
+
     const connect = () => {
       const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-      socket = new WebSocket(`${protocol}//${location.host}/ws`);
+      try {
+        socket = new WebSocket(`${protocol}//${location.host}/ws`);
+      } catch {
+        void confirmServerAvailability();
+        if (!stopped) retryTimer = window.setTimeout(connect, 2000);
+        return;
+      }
       socket.onopen = () => {
-        setServerConnected(true);
+        setServerConnection("online");
         window.parent.postMessage({ type: "music-widget-ready" }, "*");
       };
       socket.onmessage = (event) => {
         const message = JSON.parse(event.data) as ServerMessage;
+        setServerConnection("online");
         if (message.type === "snapshot") { setConfig(message.config); setPlayback(message.playback); }
         else if (message.type === "config") setConfig(message.config);
         else if (message.type === "playback") setPlayback(message.playback);
       };
       socket.onclose = () => {
-        setServerConnected(false);
         window.parent.postMessage({ type: "music-widget-disconnected" }, "*");
-        if (!stopped) retryTimer = window.setTimeout(connect, 2000);
+        if (!stopped) {
+          void confirmServerAvailability();
+          retryTimer = window.setTimeout(connect, 2000);
+        }
       };
     };
     connect();
@@ -130,12 +166,12 @@ export function Widget() {
     const trackId = playback.item?.id ?? null;
     let timer: number | undefined;
 
-    if (trackId && trackId !== lastTrack.current) {
+    if (preset.visibility.hideOnPause && !playback.isPlaying) {
+      timer = window.setTimeout(() => setVisible(false), preset.visibility.hideDelaySeconds * 1000);
+    } else if (trackId && trackId !== lastTrack.current) {
       lastTrack.current = trackId;
       setVisible(true);
       if (preset.visibility.songChangeOnly) timer = window.setTimeout(() => setVisible(false), preset.visibility.visibleDurationSeconds * 1000);
-    } else if (preset.visibility.hideOnPause && !playback.isPlaying) {
-      timer = window.setTimeout(() => setVisible(false), preset.visibility.hideDelaySeconds * 1000);
     } else if (!preset.visibility.songChangeOnly) {
       setVisible(true);
     }
@@ -168,14 +204,23 @@ export function Widget() {
 
   useEffect(() => setIdleMediaFailed(false), [resolvedPreset, preset?.emptyState.media.revision]);
 
+  const translateStatus = widgetTranslator(config?.language);
+  if (serverConnection === "checking") return null;
+  if (serverConnection === "offline") {
+    return <StatusCard
+      title={translateStatus("serverTitle")}
+      detail={translateStatus("serverText")}
+      action={translateStatus("openDashboard")}
+      animation={preset?.animations.enter ?? "fade"}
+    />;
+  }
   if (!preset) return null;
   const textStyle = preset.textStyle ?? fallbackTextStyle;
   const progressStyle = preset.progressStyle ?? { customTrackColor: false, trackColor: "#f5f5f5" };
   const customTrackColor = progressStyle.customTrackColor ?? Boolean(progressStyle.trackColor);
-  const translateStatus = widgetTranslator(config?.language);
-  const status = getWidgetStatus(serverConnected, playback.status, translateStatus);
-  if (status && (!playback.item || !serverConnected)) {
-    return <StatusCard title={status.title} detail={status.detail} action={translateStatus("openDashboard")} />;
+  const status = getWidgetStatus(playback.status, translateStatus);
+  if (status && !playback.item) {
+    return <StatusCard title={status.title} detail={status.detail} action={translateStatus("openDashboard")} animation={preset.animations.enter} />;
   }
   const percentage = view.durationMs ? Math.min(100, displayedProgress / view.durationMs * 100) : 0;
   const automaticTextStyle = getAutomaticTextStyle(preset.theme, coverColor, preset.cover.glow && Boolean(view.coverUrl));
@@ -307,8 +352,8 @@ function WidgetScaler({ layout, showCover, children }: { layout: Preset["layout"
   </div>;
 }
 
-function StatusCard({ title, detail, action }: { title: string; detail: string; action: string }) {
-  return <main className="widget-status" role="status" aria-live="polite">
+function StatusCard({ title, detail, action, animation }: { title: string; detail: string; action: string; animation: Preset["animations"]["enter"] }) {
+  return <main className={`widget-status status-enter-${animation}`} role="status" aria-live="polite">
     <span className="status-symbol" aria-hidden="true">!</span>
     <div><strong>{title}</strong><p>{detail}</p><a href="/dashboard" target="_blank" rel="noreferrer">{action}</a></div>
   </main>;
@@ -319,11 +364,9 @@ function MusicNoteIcon() {
 }
 
 function getWidgetStatus(
-  serverConnected: boolean,
   status: PlaybackState["status"],
   t: (key: WidgetTranslationKey) => string
 ): { title: string; detail: string } | null {
-  if (!serverConnected) return { title: t("serverTitle"), detail: t("serverText") };
   if (status === "checking") return { title: t("checkingTitle"), detail: t("checkingText") };
   if (status === "not_authorized") return { title: t("notAuthorizedTitle"), detail: t("notAuthorizedText") };
   if (status === "reauthorize") return { title: t("reauthorizeTitle"), detail: t("reauthorizeText") };

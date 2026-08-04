@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -46,6 +46,14 @@ try {
   const bootstrap = await getJson(`${baseUrl}/api/system/bootstrap`);
   if (!bootstrap.url.startsWith("file:///") || !bootstrap.url.endsWith("/dist/obs-bootstrap.html")) {
     throw new Error("The bootstrap file URL is unavailable or invalid.");
+  }
+  const [bootstrapSource, builtBootstrap] = await Promise.all([
+    readFile(join(cwd, "obs-bootstrap.html"), "utf8"),
+    readFile(join(cwd, "dist", "obs-bootstrap.html"), "utf8")
+  ]);
+  if (bootstrapSource !== builtBootstrap) throw new Error("The generated OBS bootstrap page is out of sync with its source.");
+  if (!builtBootstrap.includes("visibility: hidden; opacity: 0;") || !builtBootstrap.includes('status.classList.add("visible")')) {
+    throw new Error("The OBS bootstrap status is not deferred until a failed health check.");
   }
   const socketMessage = await new Promise((resolve, reject) => {
     const socket = new WebSocket(`ws://127.0.0.1:${testPort}/ws`);

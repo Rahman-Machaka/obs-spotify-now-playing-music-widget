@@ -8,10 +8,13 @@
       * { box-sizing: border-box; }
       html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
       body { display: grid; place-items: center; font-family: Inter, system-ui, sans-serif; }
-      .status { position: relative; z-index: 1; width: min(calc(100% - 24px), 430px); display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; border: 1px solid #343844; border-radius: 14px; color: #f5f6fa; background: #14161def; box-shadow: 0 8px 28px #0009; }
+      .status { position: relative; z-index: 1; width: min(calc(100% - 24px), 430px); display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; visibility: hidden; opacity: 0; border: 1px solid #343844; border-radius: 14px; color: #f5f6fa; background: #14161def; box-shadow: 0 8px 28px #0009; }
+      .status.visible { visibility: visible; animation: reveal .4s ease-out both; }
       .symbol { flex: 0 0 30px; width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #d8a94f66; border-radius: 50%; color: #f2c66f; background: #d8a94f14; font-size: 15px; font-weight: 800; }
       strong { display: block; font-size: 14px; line-height: 20px; }
       p { margin: 4px 0 0; color: #aeb3c1; font-size: 11px; line-height: 16px; }
+      @keyframes reveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+      @media (prefers-reduced-motion: reduce) { .status.visible { opacity: 1; animation: none; } }
     </style>
   </head>
   <body>
@@ -35,6 +38,7 @@
       const language = navigator.language.toLowerCase().startsWith("de") ? "de" : "en";
       const requestedPreset = new URLSearchParams(location.search).get("preset");
       const message = messages[language];
+      const status = document.getElementById("status");
       document.documentElement.lang = language;
       document.getElementById("status-title").textContent = message.title;
       document.getElementById("status-text").textContent = message.text;
@@ -52,6 +56,7 @@
           const preset = requestedPreset || (typeof health.activePreset === "string" && health.activePreset ? health.activePreset : "main");
           window.location.replace(`${widgetBaseUrl}${encodeURIComponent(preset)}&boot=${Date.now()}`);
         } catch {
+          status.classList.add("visible");
           retry = setTimeout(connect, 3000);
         } finally {
           clearTimeout(timeout);
