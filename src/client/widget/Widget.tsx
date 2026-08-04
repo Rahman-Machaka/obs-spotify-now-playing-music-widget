@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/ho
 import type { ComponentChildren, JSX } from "preact";
 import type { AppConfig, PlaybackState, Preset, ServerMessage } from "../../shared/schema";
 import { getAutomaticTextStyle, getDerivedProgressTrackColor, hexToRgba } from "../../shared/color-contrast";
+import { extractCoverPalette, FALLBACK_COVER_PALETTE, type CoverPalette } from "../../shared/cover-palette";
 import { getCompensatedSpotifyLogoWidth, getDesignDimensions, getLayoutScaleLimit } from "../../shared/layout-dimensions";
 import { reconcilePlaybackProgress } from "../../shared/playback-progress";
 import spotifyLogoBlack from "../assets/spotify-logo-black.svg";
@@ -17,6 +18,11 @@ const fallbackTextStyle: Preset["textStyle"] = {
   color: null,
   autoContrast: false,
   shadow: { enabled: false, color: "#000000", opacity: 65, blur: 3 }
+};
+const fallbackWidgetStyle: Preset["widgetStyle"] = {
+  surfaceOpacity: 100,
+  outline: { enabled: true, color: null, opacity: 100, width: 1 },
+  shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
 };
 
 function presetName(): string {
@@ -37,7 +43,7 @@ export function Widget() {
   const [progress, setProgress] = useState(0);
   const [visible, setVisible] = useState(false);
   const [serverConnection, setServerConnection] = useState<ServerConnectionState>("checking");
-  const [coverColor, setCoverColor] = useState("#30333b");
+  const [coverPalette, setCoverPalette] = useState<CoverPalette>(FALLBACK_COVER_PALETTE);
   const [coverContentReady, setCoverContentReady] = useState(true);
   const [idleMediaFailed, setIdleMediaFailed] = useState(false);
   const lastTrack = useRef<string | null>(null);
@@ -222,15 +228,15 @@ export function Widget() {
 
   useEffect(() => {
     if (!view.coverUrl) {
-      setCoverColor("#30333b");
+      setCoverPalette(FALLBACK_COVER_PALETTE);
       return;
     }
-    if (preset?.cover.mode !== "none" || !preset.cover.glow) return;
+    if (preset?.cover.mode !== "none" || (!preset.cover.glow && !preset.coverPalette?.enabled)) return;
     const image = new Image();
-    image.onload = () => setCoverColor(extractCoverColor(image));
+    image.onload = () => setCoverPalette(extractPaletteFromImage(image));
     image.src = view.coverUrl;
     return () => { image.onload = null; };
-  }, [view.coverUrl, preset?.cover.glow, preset?.cover.mode]);
+  }, [view.coverUrl, preset?.cover.glow, preset?.cover.mode, preset?.coverPalette?.enabled]);
 
   useEffect(() => setIdleMediaFailed(false), [resolvedPreset, preset?.emptyState.media.revision]);
 
@@ -247,38 +253,64 @@ export function Widget() {
   if (!preset) return null;
   const textStyle = preset.textStyle ?? fallbackTextStyle;
   const progressStyle = preset.progressStyle ?? { customTrackColor: false, trackColor: "#f5f5f5" };
+  const widgetStyle = preset.widgetStyle ?? fallbackWidgetStyle;
+  const paletteEnabled = Boolean(preset.coverPalette?.enabled && view.coverUrl);
   const customTrackColor = progressStyle.customTrackColor ?? Boolean(progressStyle.trackColor);
   const status = getWidgetStatus(playback.status, translateStatus);
   if (status && !playback.item) {
     return <StatusCard title={status.title} detail={status.detail} action={translateStatus("openDashboard")} animation={preset.animations.enter} />;
   }
   const percentage = view.durationMs ? Math.min(100, displayedProgress / view.durationMs * 100) : 0;
-  const automaticTextStyle = getAutomaticTextStyle(preset.theme, coverColor, preset.cover.glow && Boolean(view.coverUrl));
-  const textColor = textStyle.autoContrast ? automaticTextStyle.color : textStyle.color;
-  const textShadow = textStyle.autoContrast
+  const automaticTextStyle = getAutomaticTextStyle(preset.theme, coverPalette.surface, (preset.cover.glow || paletteEnabled) && Boolean(view.coverUrl));
+  const textColor = paletteEnabled ? coverPalette.text : textStyle.autoContrast ? automaticTextStyle.color : textStyle.color;
+  const textShadow = paletteEnabled
+    ? "none"
+    : textStyle.autoContrast
     ? automaticTextStyle.shadow
     : textStyle.shadow.enabled
       ? `0 1px ${textStyle.shadow.blur}px ${hexToRgba(textStyle.shadow.color, textStyle.shadow.opacity / 100)}`
       : "none";
-  const textFilter = textStyle.autoContrast
+  const textFilter = paletteEnabled
+    ? "none"
+    : textStyle.autoContrast
     ? automaticTextStyle.filter
     : textStyle.shadow.enabled
       ? `drop-shadow(0 1px ${textStyle.shadow.blur}px ${hexToRgba(textStyle.shadow.color, textStyle.shadow.opacity / 100)})`
       : "none";
+  const outlineColor = widgetStyle.outline.color
+    ? hexToRgba(widgetStyle.outline.color, widgetStyle.outline.opacity / 100)
+    : `color-mix(in srgb, var(--panel-border) ${widgetStyle.outline.opacity}%, transparent)`;
+  const shadowColor = widgetStyle.shadow.color
+    ? hexToRgba(widgetStyle.shadow.color, widgetStyle.shadow.opacity / 100)
+    : `color-mix(in srgb, var(--panel-shadow) ${widgetStyle.shadow.opacity}%, transparent)`;
   const style: JSX.CSSProperties & Record<string, string | number | undefined> = {
-    "--accent": preset.accentColor,
+    "--accent": paletteEnabled ? coverPalette.accent : preset.accentColor,
     "--font": preset.fontFamily,
-    "--cover-color": coverColor,
+    "--cover-color": coverPalette.surface,
+    ...(paletteEnabled ? { "--panel": coverPalette.surface } : {}),
     "--idle-opacity": String(preset.emptyState.dim.enabled ? 1 - preset.emptyState.dim.percent / 100 : 1),
     "--text-shadow": textShadow,
     "--text-filter": textFilter,
+    "--surface-opacity": `${widgetStyle.surfaceOpacity}%`,
+    "--widget-outline-width": widgetStyle.outline.enabled ? `${widgetStyle.outline.width}px` : "0px",
+    "--widget-outline-color": outlineColor,
+    "--widget-drop-shadow": widgetStyle.shadow.enabled
+      ? `0 4px ${widgetStyle.shadow.blur}px ${shadowColor}`
+      : "0 0 0 transparent",
+    "--widget-inset-outline": widgetStyle.outline.enabled
+      ? "inset 0 0 0 1px var(--panel-inset)"
+      : "inset 0 0 0 transparent",
     ...(textColor ? {
       "--text": textColor,
-      "--artist-text": textStyle.autoContrast
+      "--artist-text": paletteEnabled
+        ? coverPalette.artistText
+        : textStyle.autoContrast
         ? automaticTextStyle.artistColor
         : `color-mix(in srgb, ${textColor} 82%, transparent)`
     } : {}),
-    "--progress-track": customTrackColor
+    "--progress-track": paletteEnabled
+      ? coverPalette.track
+      : customTrackColor
       ? progressStyle.trackColor ?? "#f5f5f5"
       : getDerivedProgressTrackColor(preset.accentColor, preset.theme)
   };
@@ -300,17 +332,17 @@ export function Widget() {
 
   return (
     <WidgetScaler layout={preset.layout} showCover={preset.cover.mode === "square"}>
-      <main className={`widget theme-${preset.theme} layout-${preset.layout} ${preset.cover.mode === "square" ? "with-cover" : "without-cover"} ${idle ? "is-idle" : ""} enter-${preset.animations.enter} exit-${preset.animations.exit} ${visible ? "is-visible" : "is-hidden"}`} style={style}>
+      <main className={`widget theme-${preset.theme} layout-${preset.layout} ${preset.cover.mode === "square" ? "with-cover" : "without-cover"} ${paletteEnabled ? "cover-palette" : ""} ${idle ? "is-idle" : ""} enter-${preset.animations.enter} exit-${preset.animations.exit} ${visible ? "is-visible" : "is-hidden"}`} style={style}>
       <div className="cover panel" aria-hidden={preset.cover.mode === "none"}>
         {preset.cover.mode === "square" && coverContentReady && (view.coverUrl
-          ? <img src={view.coverUrl} alt="" onLoad={(event) => setCoverColor(extractCoverColor(event.currentTarget))} />
+          ? <img src={view.coverUrl} alt="" onLoad={(event) => setCoverPalette(extractPaletteFromImage(event.currentTarget))} />
           : showCustomIdleMedia === "video"
             ? <video className="idle-media" src={idleMediaUrl} style={mediaStyle} autoPlay loop muted playsInline onError={() => setIdleMediaFailed(true)} />
             : showCustomIdleMedia === "image"
               ? <img className="idle-media" src={idleMediaUrl} style={mediaStyle} alt="" onError={() => setIdleMediaFailed(true)} />
               : <span className="cover-placeholder"><MusicNoteIcon /></span>)}
       </div>
-      <div className={`metadata panel ${preset.cover.glow && view.coverUrl ? "cover-tint" : ""}`}>
+      <div className={`metadata panel ${preset.cover.glow && !paletteEnabled && view.coverUrl ? "cover-tint" : ""}`}>
         <div className="copy">
           <OverflowText text={view.title} kind="title" />
           <OverflowText text={view.artist} kind="artist" />
@@ -412,7 +444,14 @@ function Visualizer({ playing }: { playing: boolean }) {
   useEffect(() => {
     const visualizer = visualizerRef.current;
     if (!visualizer) return;
-    const updateBarCount = () => setBarCount(Math.max(5, Math.min(24, Math.floor(visualizer.clientWidth / 12))));
+    const updateBarCount = () => {
+      const visualizerStyle = getComputedStyle(visualizer);
+      const firstBar = visualizer.querySelector("i");
+      const barWidth = firstBar ? Number.parseFloat(getComputedStyle(firstBar).width) : 4;
+      const gap = Number.parseFloat(visualizerStyle.columnGap) || 0;
+      const availableBars = Math.floor((visualizer.clientWidth + gap) / Math.max(1, barWidth + gap));
+      setBarCount(Math.max(5, Math.min(32, availableBars)));
+    };
     const observer = new ResizeObserver(updateBarCount);
     observer.observe(visualizer);
     updateBarCount();
@@ -471,37 +510,17 @@ function formatTime(milliseconds: number): string {
   return `${Math.floor(totalSeconds / 60).toString().padStart(2, "0")}:${(totalSeconds % 60).toString().padStart(2, "0")}`;
 }
 
-function extractCoverColor(image: HTMLImageElement): string {
+function extractPaletteFromImage(image: HTMLImageElement): CoverPalette {
   try {
     const canvas = document.createElement("canvas");
     canvas.width = 24;
     canvas.height = 24;
     const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) return "#30333b";
+    if (!context) return FALLBACK_COVER_PALETTE;
     context.drawImage(image, 0, 0, 24, 24);
     const pixels = context.getImageData(0, 0, 24, 24).data;
-    const buckets = new Map<string, { count: number; red: number; green: number; blue: number }>();
-
-    for (let index = 0; index < pixels.length; index += 16) {
-      const red = pixels[index];
-      const green = pixels[index + 1];
-      const blue = pixels[index + 2];
-      const alpha = pixels[index + 3];
-      const lightness = (Math.max(red, green, blue) + Math.min(red, green, blue)) / 510;
-      if (alpha < 180 || lightness < .08 || lightness > .92) continue;
-      const key = `${red >> 5}-${green >> 5}-${blue >> 5}`;
-      const bucket = buckets.get(key) ?? { count: 0, red: 0, green: 0, blue: 0 };
-      bucket.count += 1;
-      bucket.red += red;
-      bucket.green += green;
-      bucket.blue += blue;
-      buckets.set(key, bucket);
-    }
-
-    const dominant = [...buckets.values()].sort((left, right) => right.count - left.count)[0];
-    if (!dominant) return "#30333b";
-    return `rgb(${Math.round(dominant.red / dominant.count)} ${Math.round(dominant.green / dominant.count)} ${Math.round(dominant.blue / dominant.count)})`;
+    return extractCoverPalette(pixels);
   } catch {
-    return "#30333b";
+    return FALLBACK_COVER_PALETTE;
   }
 }

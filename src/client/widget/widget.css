@@ -17,11 +17,11 @@ html, body, #widget-root { width: 100%; height: 100%; margin: 0; overflow: hidde
 .widget-status.status-enter-slide-right { animation: reveal-slide-right .58s cubic-bezier(.22,1,.36,1) both; }
 .widget-status.status-enter-slide-top { animation: reveal-slide-top .58s cubic-bezier(.22,1,.36,1) both; }
 .widget-status.status-enter-slide-bottom { animation: reveal-slide-bottom .58s cubic-bezier(.22,1,.36,1) both; }
-.widget { --panel: #141519; --text: #f6f6f7; --muted: #b5b5bd; --panel-border: #ffffff18; --panel-inset: #0003; --panel-shadow: #0008; display: grid; grid-template-columns: 108px repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 0; width: 100%; height: 100%; padding: 4px; color: var(--text); font-family: var(--font), system-ui, sans-serif; opacity: 1; transform-origin: center; transition: grid-template-columns .36s cubic-bezier(.2,0,0,1), grid-template-rows .36s cubic-bezier(.2,0,0,1), opacity .3s ease; }
+.widget { --panel: #141519; --text: #f6f6f7; --muted: #b5b5bd; --panel-border: #ffffff18; --panel-inset: #0003; --panel-shadow: #0008; --surface-opacity: 100%; --widget-outline-width: 1px; --widget-outline-color: var(--panel-border); --widget-drop-shadow: 0 4px 9px var(--panel-shadow); --widget-inset-outline: inset 0 0 0 1px var(--panel-inset); display: grid; grid-template-columns: 108px repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 0; width: 100%; height: 100%; padding: 4px; color: var(--text); font-family: var(--font), system-ui, sans-serif; opacity: 1; transform-origin: center; transition: grid-template-columns .36s cubic-bezier(.2,0,0,1), grid-template-rows .36s cubic-bezier(.2,0,0,1), opacity .3s ease; }
 .widget.is-idle { opacity: var(--idle-opacity); }
 .widget.without-cover { grid-template-columns: 0px repeat(2, minmax(0, 1fr)); }
 .widget.theme-light { --panel: #f0f1f3; --text: #14151a; --muted: #62646c; --panel-border: #00000026; --panel-inset: #ffffffa0; --panel-shadow: #0003; }
-.panel { min-width: 0; overflow: hidden; border: 1px solid var(--panel-border); border-radius: 12px; background: var(--panel); box-shadow: 0 4px 9px var(--panel-shadow), inset 0 0 0 1px var(--panel-inset); }
+.panel { min-width: 0; overflow: hidden; border: var(--widget-outline-width) solid var(--widget-outline-color); border-radius: 12px; background: color-mix(in srgb, var(--panel) var(--surface-opacity), transparent); box-shadow: var(--widget-drop-shadow), var(--widget-inset-outline); }
 .cover { position: relative; width: auto; height: 100%; min-width: 0; min-height: 0; display: grid; place-items: center; margin-right: 8px; transition: margin .36s cubic-bezier(.2,0,0,1), visibility 0s .36s; }
 .widget.without-cover > .cover { visibility: hidden; margin-right: 0; transition-delay: 0s; }
 .cover.panel { border-radius: 8px; }
@@ -30,7 +30,7 @@ html, body, #widget-root { width: 100%; height: 100%; margin: 0; overflow: hidde
 .cover-placeholder { display: grid; place-items: center; width: 100%; height: 100%; color: var(--accent); background: linear-gradient(145deg, color-mix(in srgb,var(--accent) 22%,var(--panel)), var(--panel)); }
 .cover-placeholder svg { width: 36%; height: 36%; }
 .metadata { position: relative; display: flex; align-items: center; margin-right: 4px; padding: 10px 18px; }
-.metadata.cover-tint { background: radial-gradient(circle at 12% 50%, color-mix(in srgb, var(--cover-color) 74%, transparent) 0%, color-mix(in srgb, var(--cover-color) 32%, var(--panel)) 42%, var(--panel) 100%); box-shadow: inset 0 0 30px color-mix(in srgb, var(--cover-color) 25%, transparent), 0 4px 9px var(--panel-shadow), inset 0 0 0 1px var(--panel-inset); }
+.metadata.cover-tint { background: radial-gradient(circle at 12% 50%, color-mix(in srgb, color-mix(in srgb, var(--cover-color) 74%, var(--panel)) var(--surface-opacity), transparent) 0%, color-mix(in srgb, color-mix(in srgb, var(--cover-color) 32%, var(--panel)) var(--surface-opacity), transparent) 42%, color-mix(in srgb, var(--panel) var(--surface-opacity), transparent) 100%); box-shadow: inset 0 0 30px color-mix(in srgb, var(--cover-color) 25%, transparent), var(--widget-drop-shadow), var(--widget-inset-outline); }
 .copy { width: 100%; min-width: 0; }
 .scroll-viewport { width: 100%; min-width: 0; overflow: hidden; white-space: nowrap; filter: var(--text-filter, none); }
 .scroll-viewport strong, .scroll-viewport .artist { display: inline-block; min-width: max-content; white-space: nowrap; will-change: transform; }
@@ -51,8 +51,8 @@ html, body, #widget-root { width: 100%; height: 100%; margin: 0; overflow: hidde
 .visualizer i { width: 4px; height: 35%; border-radius: 4px; background: currentColor; transform: scaleY(.6); transform-origin: center; }
 .visualizer.playing i { animation: bounce .85s ease-in-out infinite alternate; animation-delay: calc(var(--bar-index, 0) * -.13s); }
 @keyframes bounce { 0% { transform: scaleY(.4); } 100% { transform: scaleY(1.35); } }
-.layout-boxy .progress-panel { display: grid; grid-template-rows: 24px 1fr 21px; padding: 15px 18px; }
-.layout-boxy .time-row { grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(92px, 1.35fr) minmax(0, 1fr); width: 100%; height: 24px; gap: 12px; font-size: 17px; line-height: 24px; }
+.layout-boxy .progress-panel { display: grid; grid-template-rows: 24px 1fr 21px; justify-content: stretch; padding: 13px 18px; }
+.layout-boxy .time-row { grid-row: 1; display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; width: 100%; height: 24px; gap: 12px; font-size: 17px; line-height: 24px; }
 .layout-boxy .time-row > span:first-child { grid-column: 1; justify-self: start; }
 .layout-boxy .time-row > span:last-child { grid-column: 3; justify-self: end; }
 .layout-boxy .visualizer { grid-column: 2; justify-self: stretch; width: 100%; height: 24px; justify-content: center; gap: 4px; }
@@ -72,7 +72,7 @@ html, body, #widget-root { width: 100%; height: 100%; margin: 0; overflow: hidde
 .layout-compact .artist { font-size: 16px; line-height: 21px; }
 .layout-compact .attribution-row { margin-top: 6px; }
 .layout-compact .progress-panel { grid-column: 1 / -1; grid-row: 2 / 4; display: grid; grid-template-columns: 160px minmax(0, 1fr); grid-template-rows: 52px 16px; column-gap: 0; row-gap: 8px; margin-left: 0; padding: 0; overflow: visible; border: 0; background: transparent; box-shadow: none; transition: grid-template-columns .36s cubic-bezier(.2,0,0,1); }
-.layout-compact .time-row { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: minmax(68px, 1fr) minmax(150px, 3fr) minmax(68px, 1fr); align-items: center; gap: 12px; padding: 10px 16px; border: 1px solid var(--panel-border); border-radius: 13px; background: var(--panel); box-shadow: 0 4px 9px var(--panel-shadow), inset 0 0 0 1px var(--panel-inset); font-size: 18px; line-height: 24px; }
+.layout-compact .time-row { grid-column: 2; grid-row: 1; display: grid; grid-template-columns: minmax(68px, 1fr) minmax(150px, 3fr) minmax(68px, 1fr); align-items: center; gap: 12px; padding: 10px 16px; border: var(--widget-outline-width) solid var(--widget-outline-color); border-radius: 13px; background: color-mix(in srgb, var(--panel) var(--surface-opacity), transparent); box-shadow: var(--widget-drop-shadow), var(--widget-inset-outline); font-size: 18px; line-height: 24px; }
 .layout-compact.without-cover .progress-panel { grid-template-columns: 0px minmax(0, 1fr); }
 .layout-compact.without-cover .time-row { grid-column: 2; }
 .layout-compact .time-row > span:first-child { grid-column: 1; justify-self: start; }
@@ -95,7 +95,7 @@ html, body, #widget-root { width: 100%; height: 100%; margin: 0; overflow: hidde
 .layout-portrait .visualizer { height: 24px; }
 .layout-portrait .progress-track { height: 8px; margin-top: 12px; }
 .layout-minimal { position: relative; grid-template-columns: 60px minmax(0, 1fr) calc(var(--spotify-logo-width) + 40px) auto; grid-template-rows: 1fr; padding: 10px 14px; overflow: visible; }
-.layout-minimal::before { position: absolute; inset: 0; z-index: 0; border: 1px solid var(--panel-border); border-radius: 24px; content: ""; background: var(--panel); box-shadow: 0 5px 14px var(--panel-shadow), inset 0 0 0 1px var(--panel-inset); }
+.layout-minimal::before { position: absolute; inset: 0; z-index: 0; border: var(--widget-outline-width) solid var(--widget-outline-color); border-radius: 24px; content: ""; background: color-mix(in srgb, var(--panel) var(--surface-opacity), transparent); box-shadow: var(--widget-drop-shadow), var(--widget-inset-outline); }
 .layout-minimal > * { position: relative; z-index: 1; }
 .layout-minimal.without-cover { grid-template-columns: 0 minmax(0, 1fr) calc(var(--spotify-logo-width) + 40px) auto; }
 .layout-minimal .cover { grid-column: 1; width: 44px; height: 44px; place-self: center start; margin-right: 16px; border-radius: 4px; box-shadow: none; }

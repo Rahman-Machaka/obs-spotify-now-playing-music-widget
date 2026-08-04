@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { extractGoogleFontFamily } from "../build/server/shared/google-fonts.js";
+import { extractCoverPalette } from "../build/server/shared/cover-palette.js";
 import { blendHexColors, getAutomaticTextStyle, getContrastRatio, getDerivedProgressTrackColor, hexToRgba } from "../build/server/shared/color-contrast.js";
 import { getCompensatedSpotifyLogoWidth, getDesignDimensions, getLayoutScaleLimit, getRecommendedSourceDimensions, SPOTIFY_FULL_LOGO_WIDTH_PX } from "../build/server/shared/layout-dimensions.js";
 import { reconcilePlaybackProgress } from "../build/server/shared/playback-progress.js";
@@ -43,6 +44,22 @@ test("automatic text styling chooses contrast without changing configured colors
   assert.match(midToneStyle.filter, /^drop-shadow\(/);
   assert.equal(hexToRgba("#ff8000", .5), "rgba(255, 128, 0, 0.50)");
   assert.equal(getDerivedProgressTrackColor("#ff8000", "dark"), "#643910");
+});
+
+test("cover palettes derive distinct readable surface, accent, track, and text colors", () => {
+  const pixels = new Uint8ClampedArray([
+    ...Array(40).fill([65, 28, 42, 255]).flat(),
+    ...Array(18).fill([211, 68, 38, 255]).flat(),
+    ...Array(10).fill([242, 174, 151, 255]).flat(),
+    ...Array(4).fill([0, 0, 0, 0]).flat()
+  ]);
+  const palette = extractCoverPalette(pixels);
+  assert.match(palette.surface, /^#[0-9a-f]{6}$/);
+  assert.match(palette.accent, /^#[0-9a-f]{6}$/);
+  assert.notEqual(palette.surface, palette.accent);
+  assert.notEqual(palette.track, palette.accent);
+  assert.ok(getContrastRatio(palette.text, palette.surface) >= 4.5);
+  assert.ok(getContrastRatio(palette.artistText, palette.surface) >= 4.5);
 });
 
 test("playback progress ignores polling drift but preserves deliberate seeks", () => {
@@ -160,6 +177,8 @@ test("configuration migration preserves legacy values and invalid files", async 
     delete legacy.presets.main.fontSource;
     delete legacy.presets.main.textStyle;
     delete legacy.presets.main.progressStyle;
+    delete legacy.presets.main.widgetStyle;
+    delete legacy.presets.main.coverPalette;
     legacy.presets.main.layout = "minimal";
     legacy.presets.main.cover = { visible: false, glow: true };
     legacy.presets.main.animations = { enter: "grow", exit: "tilt-right" };
@@ -178,6 +197,12 @@ test("configuration migration preserves legacy values and invalid files", async 
       shadow: { enabled: false, color: "#000000", opacity: 65, blur: 3 }
     });
     assert.deepEqual(migrated.presets.main.progressStyle, { customTrackColor: false, trackColor: "#f5f5f5" });
+    assert.deepEqual(migrated.presets.main.widgetStyle, {
+      surfaceOpacity: 100,
+      outline: { enabled: true, color: null, opacity: 100, width: 1 },
+      shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
+    });
+    assert.deepEqual(migrated.presets.main.coverPalette, { enabled: false });
     assert.deepEqual(migrated.presets.main.emptyState.dim, { enabled: false, percent: 35 });
     assert.deepEqual(migrated.presets.main.emptyState.media, {
       enabled: false,

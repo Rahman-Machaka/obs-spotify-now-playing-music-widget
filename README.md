@@ -35,8 +35,8 @@ A local Spotify now-playing widget for OBS Studio. It comes with a browser dashb
 - JSON settings and DPAPI-protected Spotify tokens
 - Live OBS updates over WebSockets without refreshing the browser source
 - Main plus up to five additional scene profiles, each with independent layout and idle settings
-- Boxy, Compact, Portrait, and Minimal layouts with themes, colors, visibility rules, and animations
-- Per-profile text color, configurable text shadow, automatic contrast, and automatic or custom progress-track color
+- Boxy, Compact, Portrait, and Minimal layouts with themes, colors, panel opacity, outlines, shadows, visibility rules, and animations
+- Per-profile text color, configurable text shadow, automatic contrast, automatic cover palettes, and automatic or custom progress-track color
 - Bundled Inter and Poppins fonts, plus optional Google Fonts loaded on demand
 - Smooth overflow scrolling for long titles and artist names
 - Stable locally interpolated progress that ignores small backward polling drift while preserving deliberate seeks
@@ -65,6 +65,10 @@ The examples below use fictional metadata and an original locally generated cove
 | Minimal | Portrait |
 |---|---|
 | ![Minimal layout](docs/images/layout-minimal.png) | <img src="docs/images/layout-portrait.png" alt="Portrait layout" width="210"> |
+
+Chromagic derives a coordinated solid-color palette from the current artwork while keeping the cover itself unchanged:
+
+![Boxy layout using an automatically extracted Chromagic cover palette](docs/images/layout-chromagic.png)
 
 The checkerboard is a documentation preview background. The OBS widget itself remains transparent.
 
@@ -205,6 +209,8 @@ You can change:
 - Dark and light themes
 - Preset accent colors and a custom color picker
 - Per-profile text color and shadow controls, optional automatic readability, and an unfilled progress-track color derived from the accent or explicitly overridden
+- Per-profile panel opacity, outline, and widget-shadow controls; Spotify artwork and logo attribution remain fully opaque
+- Optional Chromagic mode derives solid panel, text, accent, visualizer, and progress colors locally from the current cover while retaining manual color settings
 - Independent metadata/progress entrance and exit animations: None, Fade, and four restrained Slide directions. Existing Grow, Shrink, Swing, and Tilt settings migrate to their closest Fade or Slide equivalent. Spotify artwork itself remains static.
 - Local and optional Google fonts
 - Hide on pause

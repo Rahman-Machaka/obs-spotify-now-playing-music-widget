@@ -48,6 +48,30 @@ const ProgressStyleSchema = z.preprocess((progressStyle) => {
   trackColor: HexColorSchema.default("#f5f5f5")
 })).default({ customTrackColor: false, trackColor: "#f5f5f5" });
 
+const WidgetStyleSchema = z.object({
+  surfaceOpacity: z.number().int().min(0).max(100).default(100),
+  outline: z.object({
+    enabled: z.boolean().default(true),
+    color: HexColorSchema.nullable().default(null),
+    opacity: z.number().int().min(0).max(100).default(100),
+    width: z.number().int().min(1).max(4).default(1)
+  }).default({ enabled: true, color: null, opacity: 100, width: 1 }),
+  shadow: z.object({
+    enabled: z.boolean().default(true),
+    color: HexColorSchema.nullable().default(null),
+    opacity: z.number().int().min(0).max(100).default(100),
+    blur: z.number().int().min(0).max(30).default(9)
+  }).default({ enabled: true, color: null, opacity: 100, blur: 9 })
+}).default({
+  surfaceOpacity: 100,
+  outline: { enabled: true, color: null, opacity: 100, width: 1 },
+  shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
+});
+
+const CoverPaletteSchema = z.object({
+  enabled: z.boolean().default(false)
+}).default({ enabled: false });
+
 const EmptyStateMediaSchema = z.object({
   enabled: z.boolean().default(false),
   kind: z.enum(["image", "video"]).nullable().default(null),
@@ -75,6 +99,8 @@ export const PresetSchema = z.object({
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   textStyle: TextStyleSchema,
   progressStyle: ProgressStyleSchema,
+  widgetStyle: WidgetStyleSchema,
+  coverPalette: CoverPaletteSchema,
   fontFamily: z.string().min(1).max(100),
   fontSource: z.enum(["local", "google"]).default("local"),
   cover: CoverSchema,
@@ -189,6 +215,12 @@ export const defaultConfig: AppConfig = {
         shadow: { enabled: false, color: "#000000", opacity: 65, blur: 3 }
       },
       progressStyle: { customTrackColor: false, trackColor: "#f5f5f5" },
+      widgetStyle: {
+        surfaceOpacity: 100,
+        outline: { enabled: true, color: null, opacity: 100, width: 1 },
+        shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
+      },
+      coverPalette: { enabled: false },
       fontFamily: "Poppins",
       fontSource: "local",
       cover: { mode: "square", glow: false },

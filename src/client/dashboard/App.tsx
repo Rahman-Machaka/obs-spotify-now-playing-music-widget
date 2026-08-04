@@ -12,6 +12,11 @@ const fallbackTextStyle: Preset["textStyle"] = {
   autoContrast: false,
   shadow: { enabled: false, color: "#000000", opacity: 65, blur: 3 }
 };
+const fallbackWidgetStyle: Preset["widgetStyle"] = {
+  surfaceOpacity: 100,
+  outline: { enabled: true, color: null, opacity: 100, width: 1 },
+  shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
+};
 const animations: Array<{ value: Preset["animations"]["enter"]; label: TranslationKey; direction?: TranslationKey }> = [
   { value: "none", label: "animationNone" },
   { value: "fade", label: "animationFade" },
@@ -147,6 +152,7 @@ export function App() {
   const sourceSize = getRecommendedSourceDimensions(preset.layout, preset.cover.mode);
   const textStyle = preset.textStyle ?? fallbackTextStyle;
   const progressStyle = preset.progressStyle ?? { customTrackColor: false, trackColor: "#f5f5f5" };
+  const widgetStyle = preset.widgetStyle ?? fallbackWidgetStyle;
   const customTrackColor = progressStyle.customTrackColor ?? Boolean(progressStyle.trackColor);
   const spotifyOnline = serverConnected && (spotifyStatus === "ready" || spotifyStatus === "idle");
   const spotifyWarning = spotifyStatus === "checking" || spotifyStatus === "rate_limited" || spotifyStatus === "reauthorize";
@@ -170,6 +176,9 @@ export function App() {
   });
   const updateTextStyle = (patch: Partial<Preset["textStyle"]>) => updatePreset({
     textStyle: { ...textStyle, ...patch }
+  });
+  const updateWidgetStyle = (patch: Partial<Preset["widgetStyle"]>) => updatePreset({
+    widgetStyle: { ...widgetStyle, ...patch }
   });
   const commitProfileName = () => {
     const name = profileNameDraft.trim();
@@ -398,7 +407,7 @@ export function App() {
             </div>
             <div className="row-setting">
               <div><strong>{t("coverGlow")}</strong><small>{t("coverGlowHint")}</small></div>
-              <Toggle label={t("coverGlow")} checked={preset.cover.glow} onChange={(glow) => updatePreset({ cover: { ...preset.cover, glow } })} />
+              <Toggle label={t("coverGlow")} checked={preset.cover.glow} disabled={preset.coverPalette.enabled} onChange={(glow) => updatePreset({ cover: { ...preset.cover, glow } })} />
             </div>
           </Section>
 
@@ -470,58 +479,107 @@ export function App() {
           </Section>
 
           <Section title={t("colors")}>
-            <span className="field-label">{t("theme")}</span>
-            <div className="choice-grid theme-grid">
-              {(["dark", "light"] as const).map((theme) => (
-                <Choice key={theme} active={preset.theme === theme} label={t(theme === "dark" ? "darkMode" : "lightMode")} onClick={() => updatePreset({ theme })}>
-                  <div className={`theme-icon ${theme}`}><b><MusicNoteIcon /></b><span /><span /></div>
-                </Choice>
-              ))}
+            <div className="row-setting chromagic-setting">
+              <div><strong>{t("chromagic")}</strong><small>{t("chromagicHint")}</small></div>
+              <Toggle label={t("chromagic")} checked={preset.coverPalette.enabled}
+                onChange={(enabled) => updatePreset({ coverPalette: { enabled } })} />
             </div>
-            <span className="field-label">{t("tintColor")}</span>
-            <div className="color-row">
-              {colors.map((color) => <button type="button" key={color} aria-label={color} aria-pressed={preset.accentColor === color} className={preset.accentColor === color ? "selected" : ""} style={{ background: color }} onClick={() => updatePreset({ accentColor: color })} />)}
-              <label className="custom-color" aria-label={t("tintColor")}><PlusIcon /><input aria-label={t("tintColor")} type="color" value={preset.accentColor} onChange={(event) => updatePreset({ accentColor: event.target.value })} /></label>
-            </div>
+            <fieldset className="palette-manual-fields" disabled={preset.coverPalette.enabled}>
+              <span className="field-label">{t("theme")}</span>
+              <div className="choice-grid theme-grid">
+                {(["dark", "light"] as const).map((theme) => (
+                  <Choice key={theme} active={preset.theme === theme} label={t(theme === "dark" ? "darkMode" : "lightMode")} onClick={() => updatePreset({ theme })}>
+                    <div className={`theme-icon ${theme}`}><b><MusicNoteIcon /></b><span /><span /></div>
+                  </Choice>
+                ))}
+              </div>
+              <span className="field-label">{t("tintColor")}</span>
+              <div className="color-row">
+                {colors.map((color) => <button type="button" key={color} aria-label={color} aria-pressed={preset.accentColor === color} className={preset.accentColor === color ? "selected" : ""} style={{ background: color }} onClick={() => updatePreset({ accentColor: color })} />)}
+                <label className="custom-color" aria-label={t("tintColor")}><PlusIcon /><input aria-label={t("tintColor")} type="color" value={preset.accentColor} onChange={(event) => updatePreset({ accentColor: event.target.value })} /></label>
+              </div>
+            </fieldset>
 
             <div className="style-card">
-              <div className="row-setting compact-row">
-                <div><strong>{t("automaticReadability")}</strong><small>{t("automaticReadabilityHint")}</small></div>
-                <Toggle label={t("automaticReadability")} checked={textStyle.autoContrast} onChange={(autoContrast) => updateTextStyle({ autoContrast })} />
+              <div className="widget-surface-controls">
+                <RangeField label={t("widgetSurfaceOpacity")} value={widgetStyle.surfaceOpacity} min={0} max={100} suffix="%"
+                  onChange={(surfaceOpacity) => updateWidgetStyle({ surfaceOpacity })} />
+                <small>{t("widgetSurfaceOpacityHint")}</small>
               </div>
 
-              <fieldset className="text-style-fields" disabled={textStyle.autoContrast}>
-                <ColorField label={t("textColor")} hint={t("textColorHint")}
-                  value={textStyle.color ?? (preset.theme === "dark" ? "#f6f6f7" : "#14151a")}
-                  resetLabel={textStyle.color ? t("useThemeColor") : undefined}
-                  onReset={textStyle.color ? () => updateTextStyle({ color: null }) : undefined}
-                  onChange={(color) => updateTextStyle({ color })} />
+              <div className="row-setting compact-row">
+                <div><strong>{t("widgetOutline")}</strong><small>{t("widgetOutlineHint")}</small></div>
+                <Toggle label={t("widgetOutline")} checked={widgetStyle.outline.enabled}
+                  onChange={(enabled) => updateWidgetStyle({ outline: { ...widgetStyle.outline, enabled } })} />
+              </div>
+              {widgetStyle.outline.enabled && <div className="widget-style-controls">
+                <ColorField label={t("outlineColor")}
+                  value={widgetStyle.outline.color ?? (preset.theme === "dark" ? "#ffffff" : "#000000")}
+                  resetLabel={widgetStyle.outline.color ? t("useThemeColor") : undefined}
+                  onReset={widgetStyle.outline.color ? () => updateWidgetStyle({ outline: { ...widgetStyle.outline, color: null } }) : undefined}
+                  onChange={(color) => updateWidgetStyle({ outline: { ...widgetStyle.outline, color } })} />
+                <RangeField label={t("outlineOpacity")} value={widgetStyle.outline.opacity} min={0} max={100} suffix="%"
+                  onChange={(opacity) => updateWidgetStyle({ outline: { ...widgetStyle.outline, opacity } })} />
+                <RangeField label={t("outlineWidth")} value={widgetStyle.outline.width} min={1} max={4} suffix=" px"
+                  onChange={(width) => updateWidgetStyle({ outline: { ...widgetStyle.outline, width } })} />
+              </div>}
 
+              <div className="row-setting compact-row">
+                <div><strong>{t("widgetShadow")}</strong><small>{t("widgetShadowHint")}</small></div>
+                <Toggle label={t("widgetShadow")} checked={widgetStyle.shadow.enabled}
+                  onChange={(enabled) => updateWidgetStyle({ shadow: { ...widgetStyle.shadow, enabled } })} />
+              </div>
+              {widgetStyle.shadow.enabled && <div className="widget-style-controls">
+                <ColorField label={t("shadowColor")}
+                  value={widgetStyle.shadow.color ?? "#000000"}
+                  resetLabel={widgetStyle.shadow.color ? t("useThemeColor") : undefined}
+                  onReset={widgetStyle.shadow.color ? () => updateWidgetStyle({ shadow: { ...widgetStyle.shadow, color: null } }) : undefined}
+                  onChange={(color) => updateWidgetStyle({ shadow: { ...widgetStyle.shadow, color } })} />
+                <RangeField label={t("shadowOpacity")} value={widgetStyle.shadow.opacity} min={0} max={100} suffix="%"
+                  onChange={(opacity) => updateWidgetStyle({ shadow: { ...widgetStyle.shadow, opacity } })} />
+                <RangeField label={t("shadowBlur")} value={widgetStyle.shadow.blur} min={0} max={30} suffix=" px"
+                  onChange={(blur) => updateWidgetStyle({ shadow: { ...widgetStyle.shadow, blur } })} />
+              </div>}
+
+              <fieldset className="palette-manual-fields palette-style-fields" disabled={preset.coverPalette.enabled}>
                 <div className="row-setting compact-row">
-                  <div><strong>{t("textShadow")}</strong><small>{t("textShadowHint")}</small></div>
-                  <Toggle label={t("textShadow")} checked={textStyle.shadow.enabled}
-                    onChange={(enabled) => updateTextStyle({ shadow: { ...textStyle.shadow, enabled } })} />
+                  <div><strong>{t("automaticReadability")}</strong><small>{t("automaticReadabilityHint")}</small></div>
+                  <Toggle label={t("automaticReadability")} checked={textStyle.autoContrast} onChange={(autoContrast) => updateTextStyle({ autoContrast })} />
                 </div>
 
-                {textStyle.shadow.enabled && <div className="shadow-controls">
-                  <ColorField label={t("shadowColor")} value={textStyle.shadow.color}
-                    onChange={(color) => updateTextStyle({ shadow: { ...textStyle.shadow, color } })} />
-                  <RangeField label={t("shadowOpacity")} value={textStyle.shadow.opacity} min={0} max={100} suffix="%"
-                    onChange={(opacity) => updateTextStyle({ shadow: { ...textStyle.shadow, opacity } })} />
-                  <RangeField label={t("shadowBlur")} value={textStyle.shadow.blur} min={0} max={12} suffix=" px"
-                    onChange={(blur) => updateTextStyle({ shadow: { ...textStyle.shadow, blur } })} />
-                </div>}
-              </fieldset>
+                <fieldset className="text-style-fields" disabled={textStyle.autoContrast}>
+                  <ColorField label={t("textColor")} hint={t("textColorHint")}
+                    value={textStyle.color ?? (preset.theme === "dark" ? "#f6f6f7" : "#14151a")}
+                    resetLabel={textStyle.color ? t("useThemeColor") : undefined}
+                    onReset={textStyle.color ? () => updateTextStyle({ color: null }) : undefined}
+                    onChange={(color) => updateTextStyle({ color })} />
 
-              <div className="row-setting compact-row">
-                <div><strong>{t("customProgressTrackColor")}</strong><small>{t("customProgressTrackColorHint")}</small></div>
-                <Toggle label={t("customProgressTrackColor")} checked={customTrackColor}
-                  onChange={(customTrackColor) => updatePreset({ progressStyle: { ...progressStyle, customTrackColor } })} />
-              </div>
-              <fieldset className="text-style-fields progress-color-fields" disabled={!customTrackColor}>
-                <ColorField label={t("progressTrackColor")} hint={t("progressTrackColorHint")}
-                  value={customTrackColor ? progressStyle.trackColor : getDerivedProgressTrackColor(preset.accentColor, preset.theme)}
-                  onChange={(trackColor) => updatePreset({ progressStyle: { customTrackColor: true, trackColor } })} />
+                  <div className="row-setting compact-row">
+                    <div><strong>{t("textShadow")}</strong><small>{t("textShadowHint")}</small></div>
+                    <Toggle label={t("textShadow")} checked={textStyle.shadow.enabled}
+                      onChange={(enabled) => updateTextStyle({ shadow: { ...textStyle.shadow, enabled } })} />
+                  </div>
+
+                  {textStyle.shadow.enabled && <div className="shadow-controls">
+                    <ColorField label={t("shadowColor")} value={textStyle.shadow.color}
+                      onChange={(color) => updateTextStyle({ shadow: { ...textStyle.shadow, color } })} />
+                    <RangeField label={t("shadowOpacity")} value={textStyle.shadow.opacity} min={0} max={100} suffix="%"
+                      onChange={(opacity) => updateTextStyle({ shadow: { ...textStyle.shadow, opacity } })} />
+                    <RangeField label={t("shadowBlur")} value={textStyle.shadow.blur} min={0} max={12} suffix=" px"
+                      onChange={(blur) => updateTextStyle({ shadow: { ...textStyle.shadow, blur } })} />
+                  </div>}
+                </fieldset>
+
+                <div className="row-setting compact-row">
+                  <div><strong>{t("customProgressTrackColor")}</strong><small>{t("customProgressTrackColorHint")}</small></div>
+                  <Toggle label={t("customProgressTrackColor")} checked={customTrackColor}
+                    onChange={(customProgressTrackColor) => updatePreset({ progressStyle: { ...progressStyle, customTrackColor: customProgressTrackColor } })} />
+                </div>
+                <fieldset className="text-style-fields progress-color-fields" disabled={!customTrackColor}>
+                  <ColorField label={t("progressTrackColor")} hint={t("progressTrackColorHint")}
+                    value={customTrackColor ? progressStyle.trackColor : getDerivedProgressTrackColor(preset.accentColor, preset.theme)}
+                    onChange={(trackColor) => updatePreset({ progressStyle: { customTrackColor: true, trackColor } })} />
+                </fieldset>
               </fieldset>
             </div>
           </Section>
@@ -612,8 +670,8 @@ function AnimationChoice({ active, label, direction, onClick }: { active: boolea
   return <button type="button" aria-pressed={active} className={active ? "active" : ""} onClick={onClick}><strong>{label}</strong>{direction && <small>{direction}</small>}</button>;
 }
 
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
-  return <button type="button" role="switch" aria-label={label} aria-checked={checked} className={`toggle ${checked ? "on" : ""}`} onClick={() => onChange(!checked)}><span /></button>;
+function Toggle({ label, checked, disabled = false, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void }) {
+  return <button type="button" role="switch" aria-label={label} aria-checked={checked} disabled={disabled} className={`toggle ${checked ? "on" : ""}`} onClick={() => onChange(!checked)}><span /></button>;
 }
 
 function RangeField({ label, value, min, max, step = 1, suffix, disabled = false, onChange }: {

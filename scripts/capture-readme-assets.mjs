@@ -51,6 +51,7 @@ const demoScript = `(() => {
     accentColor: "#e89b62",
     textStyle: { color: null, autoContrast: false, shadow: { enabled: false, color: "#000000", opacity: 65, blur: 3 } },
     progressStyle: { customTrackColor: false, trackColor: "#f5f5f5" },
+    coverPalette: { enabled: false },
     fontFamily: "Poppins",
     fontSource: "local",
     cover: { mode: "square", glow: false },
@@ -326,6 +327,7 @@ async function ensureCaptureServer(temporaryDirectory) {
         accentColor: "#39bde0",
         textStyle: { color: null, autoContrast: false, shadow: { enabled: false, color: "#000000", opacity: 65, blur: 3 } },
         progressStyle: { customTrackColor: false, trackColor: "#f5f5f5" },
+        coverPalette: { enabled: false },
         fontFamily: "Poppins",
         fontSource: "local",
         cover: { mode: "square", glow: false },
@@ -434,8 +436,31 @@ async function main() {
         ?.scrollIntoView({ block: "start" });
       window.scrollBy(0, -20);
     ` });
+    await client.send("Emulation.setDeviceMetricsOverride", { width: 1600, height: 1400, deviceScaleFactor: 1, mobile: false });
     await new Promise((resolve) => setTimeout(resolve, 250));
     await capture(client, join(outputDirectory, "dashboard-colors.png"));
+    await client.send("Runtime.evaluate", { expression: "document.querySelector('.chromagic-setting .toggle').click()" });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const chromagicControlState = (await client.send("Runtime.evaluate", {
+      expression: `(() => {
+        const toggle = document.querySelector(".chromagic-setting .toggle");
+        const thumb = toggle.querySelector("span");
+        const toggleBounds = toggle.getBoundingClientRect();
+        const thumbBounds = thumb.getBoundingClientRect();
+        return {
+          checked: toggle.getAttribute("aria-checked"),
+          width: toggleBounds.width,
+          thumbInside: thumbBounds.left >= toggleBounds.left && thumbBounds.right <= toggleBounds.right,
+          manualColorsDisabled: document.querySelector(".palette-manual-fields").disabled
+        };
+      })()`,
+      returnByValue: true
+    })).result.value;
+    if (chromagicControlState.checked !== "true" || chromagicControlState.width !== 44
+      || !chromagicControlState.thumbInside || !chromagicControlState.manualColorsDisabled) {
+      throw new Error(`The Chromagic dashboard control is malformed: ${JSON.stringify(chromagicControlState)}`);
+    }
+    await client.send("Runtime.evaluate", { expression: "document.querySelector('.chromagic-setting .toggle').click()" });
 
     for (const [layout, dimensions] of Object.entries(layouts)) {
       await navigate(client, `/widget?captureLayout=${layout}`, dimensions.width, dimensions.height, ".widget.is-visible .cover img", true);
@@ -460,6 +485,10 @@ async function main() {
     if (derivedProgressTrackColor !== "rgb(92, 67, 50)") {
       throw new Error("The automatic progress-track color was not derived from the accent color.");
     }
+    const squareVisualizerBars = (await client.send("Runtime.evaluate", {
+      expression: "document.querySelectorAll('.layout-boxy .visualizer i').length",
+      returnByValue: true
+    })).result.value;
     const readCurrentTime = async () => (await client.send("Runtime.evaluate", {
       expression: "document.querySelector('.time-row > span:first-child').textContent",
       returnByValue: true
@@ -476,12 +505,87 @@ async function main() {
     if (await readCurrentTime() !== "01:20") {
       throw new Error("A deliberate backward seek was not reflected in the displayed time.");
     }
+    await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.setCover('none')" });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const boxyWithoutCoverGeometry = (await client.send("Runtime.evaluate", {
+      expression: `(() => {
+        const metadata = document.querySelector(".layout-boxy .metadata").getBoundingClientRect();
+        const copy = document.querySelector(".layout-boxy .copy").getBoundingClientRect();
+        const progress = document.querySelector(".layout-boxy .progress-panel").getBoundingClientRect();
+        const currentTime = document.querySelector(".layout-boxy .time-row > span:first-child").getBoundingClientRect();
+        const duration = document.querySelector(".layout-boxy .time-row > span:last-child").getBoundingClientRect();
+        const track = document.querySelector(".layout-boxy .progress-track").getBoundingClientRect();
+        const visualizer = document.querySelector(".layout-boxy .visualizer").getBoundingClientRect();
+        const bars = [...document.querySelectorAll(".layout-boxy .visualizer i")].map((bar) => bar.getBoundingClientRect());
+        return {
+          metadataInsets: [copy.left - metadata.left, metadata.right - copy.right],
+          timeInsets: [currentTime.left - progress.left, progress.right - duration.right],
+          trackInsets: [track.left - progress.left, progress.right - track.right],
+          titleOffset: copy.top - metadata.top,
+          timeOffset: currentTime.top - progress.top,
+          visualizerBars: bars.length,
+          visualizerUnusedWidth: bars.length ? visualizer.width - (bars.at(-1).right - bars[0].left) : visualizer.width
+        };
+      })()`,
+      returnByValue: true
+    })).result.value;
+    const alignedInsets = [...boxyWithoutCoverGeometry.timeInsets, ...boxyWithoutCoverGeometry.trackInsets]
+      .every((inset, index) => Math.abs(inset - boxyWithoutCoverGeometry.metadataInsets[index % 2]) <= 1);
+    if (!alignedInsets || Math.abs(boxyWithoutCoverGeometry.titleOffset - boxyWithoutCoverGeometry.timeOffset) > 1) {
+      throw new Error(`The Boxy progress panel did not align with the metadata panel when the cover was hidden: ${JSON.stringify(boxyWithoutCoverGeometry)}`);
+    }
+    if (boxyWithoutCoverGeometry.visualizerBars <= squareVisualizerBars || boxyWithoutCoverGeometry.visualizerUnusedWidth > 8) {
+      throw new Error("The Boxy visualizer did not fill the additional no-cover width with more bars.");
+    }
+    await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.setCover('square')" });
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.updatePreset({ cover: { mode: 'square', glow: true } })" });
     await new Promise((resolve) => setTimeout(resolve, 100));
     const tintedTextPresentation = await readTextPresentation();
     if (JSON.stringify(originalTextPresentation) !== JSON.stringify(tintedTextPresentation)) {
       throw new Error("Cover tint changed text presentation without automatic readability enabled.");
     }
+    const opaqueTintBackground = (await client.send("Runtime.evaluate", {
+      expression: "getComputedStyle(document.querySelector('.metadata.cover-tint')).backgroundImage",
+      returnByValue: true
+    })).result.value;
+    if (opaqueTintBackground.includes("transparent") || /\/\s*0(?:\.\d+)?(?:\s|\))/.test(opaqueTintBackground)) {
+      throw new Error(`Cover tint remained transparent at full panel opacity: ${opaqueTintBackground}`);
+    }
+    await client.send("Runtime.evaluate", { expression: `window.__readmeDemo.updatePreset({
+      widgetStyle: {
+        surfaceOpacity: 50,
+        outline: { enabled: true, color: "#123456", opacity: 50, width: 2 },
+        shadow: { enabled: true, color: "#654321", opacity: 60, blur: 18 }
+      }
+    })` });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const customWidgetStyle = (await client.send("Runtime.evaluate", {
+      expression: `(() => {
+        const metadata = getComputedStyle(document.querySelector(".metadata"));
+        return {
+          surfaceOpacity: getComputedStyle(document.querySelector(".widget")).getPropertyValue("--surface-opacity").trim(),
+          borderWidth: metadata.borderLeftWidth,
+          borderColor: metadata.borderLeftColor,
+          shadow: metadata.boxShadow,
+          coverOpacity: getComputedStyle(document.querySelector(".cover img")).opacity,
+          logoOpacity: getComputedStyle(document.querySelector(".spotify-logo")).opacity
+        };
+      })()`,
+      returnByValue: true
+    })).result.value;
+    if (customWidgetStyle.surfaceOpacity !== "50%" || customWidgetStyle.borderWidth !== "2px"
+      || customWidgetStyle.borderColor !== "rgba(18, 52, 86, 0.5)" || customWidgetStyle.shadow === "none"
+      || customWidgetStyle.coverOpacity !== "1" || customWidgetStyle.logoOpacity !== "1") {
+      throw new Error(`Custom widget surfaces were not applied without dimming Spotify assets: ${JSON.stringify(customWidgetStyle)}`);
+    }
+    await client.send("Runtime.evaluate", { expression: `window.__readmeDemo.updatePreset({
+      widgetStyle: {
+        surfaceOpacity: 100,
+        outline: { enabled: true, color: null, opacity: 100, width: 1 },
+        shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
+      }
+    })` });
     await client.send("Runtime.evaluate", { expression: `window.__readmeDemo.updatePreset({
       textStyle: { color: "#abcdef", autoContrast: false, shadow: { enabled: true, color: "#102030", opacity: 70, blur: 12 } }
     })` });
@@ -503,14 +607,49 @@ async function main() {
     if (automaticPresentation.filter === "none" || automaticPresentation.artistColor === automaticPresentation.color || progressTrackColor !== "rgb(18, 52, 86)") {
       throw new Error("Automatic readability or the custom progress-track color was not applied.");
     }
+    await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.updatePreset({ cover: { mode: 'square', glow: false }, coverPalette: { enabled: true } })" });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const chromagicPresentation = (await client.send("Runtime.evaluate", {
+      expression: `(() => {
+        const widget = document.querySelector(".widget");
+        const metadata = document.querySelector(".metadata");
+        const widgetStyle = getComputedStyle(widget);
+        const metadataStyle = getComputedStyle(metadata);
+        return {
+          active: widget.classList.contains("cover-palette"),
+          tinted: metadata.classList.contains("cover-tint"),
+          panel: widgetStyle.getPropertyValue("--panel").trim(),
+          accent: widgetStyle.getPropertyValue("--accent").trim(),
+          track: getComputedStyle(document.querySelector(".progress-track")).backgroundColor,
+          text: getComputedStyle(document.querySelector(".scroll-viewport.title strong")).color,
+          backgroundImage: metadataStyle.backgroundImage
+        };
+      })()`,
+      returnByValue: true
+    })).result.value;
+    if (!chromagicPresentation.active || chromagicPresentation.tinted || chromagicPresentation.backgroundImage !== "none"
+      || chromagicPresentation.panel === "#141519" || chromagicPresentation.accent === "#e89b62"
+      || chromagicPresentation.track === "rgb(18, 52, 86)") {
+      throw new Error(`Chromagic did not override the manual colors with a solid cover palette: ${JSON.stringify(chromagicPresentation)}`);
+    }
+    await capture(client, join(outputDirectory, "layout-chromagic.png"));
+    await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.updatePreset({ coverPalette: { enabled: false } })" });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const restoredProgressTrackColor = (await client.send("Runtime.evaluate", {
+      expression: "getComputedStyle(document.querySelector('.progress-track')).backgroundColor",
+      returnByValue: true
+    })).result.value;
+    if (restoredProgressTrackColor !== "rgb(18, 52, 86)") {
+      throw new Error("Disabling Chromagic did not restore the retained manual progress-track color.");
+    }
     await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.updatePreset({ theme: 'light' })" });
     await new Promise((resolve) => setTimeout(resolve, 100));
     const lightPanelBorder = (await client.send("Runtime.evaluate", {
       expression: "getComputedStyle(document.querySelector('.panel')).borderColor",
       returnByValue: true
     })).result.value;
-    if (lightPanelBorder !== "rgba(0, 0, 0, 0.15)") {
-      throw new Error("The light theme did not apply its dedicated panel border.");
+    if (lightPanelBorder !== "rgba(0, 0, 0, 0.15)" && lightPanelBorder !== "color(srgb 0 0 0 / 0.14902)") {
+      throw new Error(`The light theme did not apply its dedicated panel border: ${lightPanelBorder}`);
     }
 
     await navigate(client, "/widget?captureLayout=minimal", layouts.minimal.width, layouts.minimal.height, ".widget.is-visible .cover img", true);
