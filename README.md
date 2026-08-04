@@ -39,6 +39,7 @@ A local Spotify now-playing widget for OBS Studio. It comes with a browser dashb
 - Per-profile text color, configurable text shadow, automatic contrast, and automatic or custom progress-track color
 - Bundled Inter and Poppins fonts, plus optional Google Fonts loaded on demand
 - Smooth overflow scrolling for long titles and artist names
+- Stable locally interpolated progress that ignores small backward polling drift while preserving deliberate seeks
 - In-memory cover cache, served locally to OBS
 - Configurable idle title, artist, local media, dimming, and in-memory last-track display
 - English and German dashboard translations with browser-language detection

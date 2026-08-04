@@ -148,6 +148,10 @@ const demoScript = `(() => {
       playback = { ...playback, isPlaying, observedAt: Date.now() };
       broadcast({ type: "playback", playback });
     },
+    reportProgress(progressMs) {
+      playback = { ...playback, progressMs, observedAt: Date.now() };
+      broadcast({ type: "playback", playback });
+    },
     configureVisibility() {
       config = { ...config, presets: { ...config.presets, main: {
         ...config.presets.main,
@@ -455,6 +459,22 @@ async function main() {
     })).result.value;
     if (derivedProgressTrackColor !== "rgb(92, 67, 50)") {
       throw new Error("The automatic progress-track color was not derived from the accent color.");
+    }
+    const readCurrentTime = async () => (await client.send("Runtime.evaluate", {
+      expression: "document.querySelector('.time-row > span:first-child').textContent",
+      returnByValue: true
+    })).result.value;
+    const timeBeforeDrift = await readCurrentTime();
+    await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.reportProgress(85500)" });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const timeAfterDrift = await readCurrentTime();
+    if (timeAfterDrift < timeBeforeDrift) {
+      throw new Error("A small backward Spotify polling drift moved the displayed time backwards.");
+    }
+    await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.reportProgress(80000)" });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (await readCurrentTime() !== "01:20") {
+      throw new Error("A deliberate backward seek was not reflected in the displayed time.");
     }
     await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.updatePreset({ cover: { mode: 'square', glow: true } })" });
     await new Promise((resolve) => setTimeout(resolve, 100));

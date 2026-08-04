@@ -4,6 +4,7 @@ import type { ComponentChildren, JSX } from "preact";
 import type { AppConfig, PlaybackState, Preset, ServerMessage } from "../../shared/schema";
 import { getAutomaticTextStyle, getDerivedProgressTrackColor, hexToRgba } from "../../shared/color-contrast";
 import { getCompensatedSpotifyLogoWidth, getDesignDimensions, getLayoutScaleLimit } from "../../shared/layout-dimensions";
+import { reconcilePlaybackProgress } from "../../shared/playback-progress";
 import spotifyLogoBlack from "../assets/spotify-logo-black.svg";
 import spotifyLogoWhite from "../assets/spotify-logo-white.svg";
 import { widgetLanguage, widgetTranslator, type WidgetTranslationKey } from "./i18n";
@@ -40,6 +41,10 @@ export function Widget() {
   const [coverContentReady, setCoverContentReady] = useState(true);
   const [idleMediaFailed, setIdleMediaFailed] = useState(false);
   const lastTrack = useRef<string | null>(null);
+  const progressRef = useRef(0);
+  const progressTrack = useRef<string | null>(null);
+  const progressWasPlaying = useRef(false);
+  const lastProgressTick = useRef(Date.now());
   const selectedPreset = presetName();
 
   useEffect(() => {
@@ -151,15 +156,40 @@ export function Widget() {
   }, [preset?.fontFamily, preset?.fontSource]);
 
   useEffect(() => {
-    let timer = 0;
-    const tick = () => {
-      const elapsed = playback.isPlaying ? Date.now() - playback.observedAt : 0;
-      setProgress(Math.min(playback.progressMs + elapsed, playback.item?.durationMs ?? 0));
-    };
-    tick();
-    if (playback.isPlaying) timer = window.setInterval(tick, 250);
+    const now = Date.now();
+    const durationMs = playback.item?.durationMs ?? 0;
+    const trackId = playback.item?.id ?? null;
+    const currentProgress = progressRef.current
+      + (progressWasPlaying.current ? Math.max(0, now - lastProgressTick.current) : 0);
+    const reportedProgress = playback.progressMs
+      + (playback.isPlaying ? Math.max(0, now - playback.observedAt) : 0);
+    const nextProgress = Math.min(
+      durationMs,
+      reconcilePlaybackProgress(currentProgress, reportedProgress, progressTrack.current === trackId)
+    );
+
+    progressRef.current = nextProgress;
+    progressTrack.current = trackId;
+    progressWasPlaying.current = playback.isPlaying;
+    lastProgressTick.current = now;
+    setProgress(nextProgress);
+  }, [playback.isPlaying, playback.item?.durationMs, playback.item?.id, playback.observedAt, playback.progressMs]);
+
+  useEffect(() => {
+    lastProgressTick.current = Date.now();
+    progressWasPlaying.current = playback.isPlaying;
+    if (!playback.isPlaying) return;
+
+    const durationMs = playback.item?.durationMs ?? 0;
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      const nextProgress = Math.min(durationMs, progressRef.current + Math.max(0, now - lastProgressTick.current));
+      progressRef.current = nextProgress;
+      lastProgressTick.current = now;
+      setProgress(nextProgress);
+    }, 250);
     return () => window.clearInterval(timer);
-  }, [playback]);
+  }, [playback.isPlaying, playback.item?.durationMs, playback.item?.id]);
 
   useEffect(() => {
     if (!preset) return;

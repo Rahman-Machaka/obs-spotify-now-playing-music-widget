@@ -7,6 +7,7 @@ import test from "node:test";
 import { extractGoogleFontFamily } from "../build/server/shared/google-fonts.js";
 import { blendHexColors, getAutomaticTextStyle, getContrastRatio, getDerivedProgressTrackColor, hexToRgba } from "../build/server/shared/color-contrast.js";
 import { getCompensatedSpotifyLogoWidth, getDesignDimensions, getLayoutScaleLimit, getRecommendedSourceDimensions, SPOTIFY_FULL_LOGO_WIDTH_PX } from "../build/server/shared/layout-dimensions.js";
+import { reconcilePlaybackProgress } from "../build/server/shared/playback-progress.js";
 import { MAIN_PRESET_ID, MAX_PRESET_COUNT } from "../build/server/shared/profiles.js";
 import { AppConfigSchema, defaultConfig } from "../build/server/shared/schema.js";
 import { ConfigStore } from "../build/server/server/config-store.js";
@@ -42,6 +43,13 @@ test("automatic text styling chooses contrast without changing configured colors
   assert.match(midToneStyle.filter, /^drop-shadow\(/);
   assert.equal(hexToRgba("#ff8000", .5), "rgba(255, 128, 0, 0.50)");
   assert.equal(getDerivedProgressTrackColor("#ff8000", "dark"), "#643910");
+});
+
+test("playback progress ignores polling drift but preserves deliberate seeks", () => {
+  assert.equal(reconcilePlaybackProgress(90_000, 88_800, true), 90_000);
+  assert.equal(reconcilePlaybackProgress(90_000, 87_500, true), 87_500);
+  assert.equal(reconcilePlaybackProgress(90_000, 91_000, true), 91_000);
+  assert.equal(reconcilePlaybackProgress(90_000, 500, false), 500);
 });
 
 test("legacy progress-track colors migrate to the explicit custom-color switch", () => {
