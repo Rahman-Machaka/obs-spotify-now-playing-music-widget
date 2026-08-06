@@ -52,7 +52,41 @@ const ProgressStyleSchema = z.preprocess((progressStyle) => {
   trackColor: HexColorSchema.default("#f5f5f5")
 })).default({ customTrackColor: false, trackColor: "#f5f5f5" });
 
-const WidgetStyleSchema = z.object({
+const WidgetInsetStyleSchema = z.preprocess((insetStyle) => {
+  if (!insetStyle || typeof insetStyle !== "object") return insetStyle;
+  const legacy = insetStyle as Record<string, unknown>;
+  if (typeof legacy.customColor === "boolean") return insetStyle;
+  return {
+    ...legacy,
+    customColor: typeof legacy.color === "string",
+    color: typeof legacy.color === "string" ? legacy.color : "#000000"
+  };
+}, z.object({
+  enabled: z.boolean().default(true),
+  customColor: z.boolean().default(false),
+  color: HexColorSchema.default("#000000"),
+  opacity: z.number().int().min(0).max(100).default(100),
+  width: z.number().int().min(1).max(4).default(1)
+})).default({ enabled: true, customColor: false, color: "#000000", opacity: 100, width: 1 });
+
+const WidgetStyleSchema = z.preprocess((widgetStyle) => {
+  if (!widgetStyle || typeof widgetStyle !== "object") return widgetStyle;
+  const legacy = widgetStyle as Record<string, unknown>;
+  if (legacy.inset) return widgetStyle;
+  const legacyOutline = legacy.outline && typeof legacy.outline === "object"
+    ? legacy.outline as Record<string, unknown>
+    : null;
+  return {
+    ...legacy,
+    inset: {
+      enabled: typeof legacyOutline?.enabled === "boolean" ? legacyOutline.enabled : true,
+      customColor: false,
+      color: "#000000",
+      opacity: 100,
+      width: 1
+    }
+  };
+}, z.object({
   surfaceOpacity: z.number().int().min(0).max(100).default(100),
   outline: z.object({
     enabled: z.boolean().default(true),
@@ -60,15 +94,17 @@ const WidgetStyleSchema = z.object({
     opacity: z.number().int().min(0).max(100).default(100),
     width: z.number().int().min(1).max(4).default(1)
   }).default({ enabled: true, color: null, opacity: 100, width: 1 }),
+  inset: WidgetInsetStyleSchema,
   shadow: z.object({
     enabled: z.boolean().default(true),
     color: HexColorSchema.nullable().default(null),
     opacity: z.number().int().min(0).max(100).default(100),
     blur: z.number().int().min(0).max(30).default(9)
   }).default({ enabled: true, color: null, opacity: 100, blur: 9 })
-}).default({
+})).default({
   surfaceOpacity: 100,
   outline: { enabled: true, color: null, opacity: 100, width: 1 },
+  inset: { enabled: true, customColor: false, color: "#000000", opacity: 100, width: 1 },
   shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
 });
 
@@ -222,6 +258,7 @@ export const defaultConfig: AppConfig = {
       widgetStyle: {
         surfaceOpacity: 100,
         outline: { enabled: true, color: null, opacity: 100, width: 1 },
+        inset: { enabled: true, customColor: false, color: "#000000", opacity: 100, width: 1 },
         shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
       },
       coverPalette: { enabled: false },

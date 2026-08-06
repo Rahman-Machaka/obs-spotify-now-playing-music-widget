@@ -21,6 +21,7 @@
     }
     .time-row {
       grid-column: 2;
+      display: grid;
     }
   }
 
@@ -91,6 +92,7 @@
         1fr
       );
     align-items: center;
+    align-content: center;
     gap: 12px;
     padding: 8px 18px;
     border: var(--widget-outline-width) solid var(--widget-outline-color);
@@ -135,9 +137,11 @@
     height: 16px;
     margin: 0;
     border: var(--widget-outline-width) solid var(--widget-outline-color);
-    background: var(
-      --progress-track,
-      color-mix(in srgb, var(--accent) 48%, var(--panel))
+    border-radius: 13px;
+    background: color-mix(
+      in srgb,
+      var(--panel) var(--surface-opacity),
+      transparent
     );
     box-shadow:
       var(--widget-drop-shadow),

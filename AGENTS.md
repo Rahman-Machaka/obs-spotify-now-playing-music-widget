@@ -502,6 +502,9 @@ The visualizer is decorative and does not represent real audio amplitude.
 - Derive the unfilled progress-track color from the accent by default. Use the
   stored custom base color only when its per-profile switch is enabled; the
   accent continues to control progress fill and the visualizer.
+- Let the widget inset inherit its color from the selected theme by default.
+  Preserve its stored custom color while theme inheritance is selected, and
+  apply that color only when the per-profile custom-color switch is enabled.
 - Use restrained text shadows only where dynamic backgrounds require them.
 - Do not add animated glow effects to the cover tint feature.
 - Avoid decorative Unicode in buttons, labels, and links.

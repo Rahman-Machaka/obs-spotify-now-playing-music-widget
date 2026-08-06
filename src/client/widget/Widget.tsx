@@ -26,6 +26,7 @@ const fallbackTextStyle: Preset["textStyle"] = {
 const fallbackWidgetStyle: Preset["widgetStyle"] = {
   surfaceOpacity: 100,
   outline: { enabled: true, color: null, opacity: 100, width: 1 },
+  inset: { enabled: true, customColor: false, color: "#000000", opacity: 100, width: 1 },
   shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
 };
 
@@ -308,6 +309,10 @@ export function Widget() {
   const outlineColor = widgetStyle.outline.color
     ? hexToRgba(widgetStyle.outline.color, widgetStyle.outline.opacity / 100)
     : `color-mix(in srgb, var(--panel-border) ${widgetStyle.outline.opacity}%, transparent)`;
+  const insetStyle = widgetStyle.inset ?? fallbackWidgetStyle.inset;
+  const insetColor = insetStyle.customColor
+    ? hexToRgba(insetStyle.color, insetStyle.opacity / 100)
+    : `color-mix(in srgb, var(--panel-inset) ${insetStyle.opacity}%, transparent)`;
   const shadowColor = widgetStyle.shadow.color
     ? hexToRgba(widgetStyle.shadow.color, widgetStyle.shadow.opacity / 100)
     : `color-mix(in srgb, var(--panel-shadow) ${widgetStyle.shadow.opacity}%, transparent)`;
@@ -326,8 +331,8 @@ export function Widget() {
     "--widget-drop-shadow": widgetStyle.shadow.enabled
       ? `0 4px ${widgetStyle.shadow.blur}px ${shadowColor}`
       : "0 0 0 transparent",
-    "--widget-inset-outline": widgetStyle.outline.enabled
-      ? "inset 0 0 0 1px var(--panel-inset)"
+    "--widget-inset-outline": insetStyle.enabled
+      ? `inset 0 0 0 ${insetStyle.width}px ${insetColor}`
       : "inset 0 0 0 transparent",
     ...(textColor ? {
       "--text": textColor,

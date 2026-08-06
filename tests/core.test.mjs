@@ -95,6 +95,19 @@ test("legacy progress-track colors migrate to the explicit custom-color switch",
   });
 });
 
+test("legacy widget inset state follows the previous outline setting", () => {
+  const config = structuredClone(defaultConfig);
+  delete config.presets.main.widgetStyle.inset;
+  config.presets.main.widgetStyle.outline.enabled = false;
+  assert.deepEqual(AppConfigSchema.parse(config).presets.main.widgetStyle.inset, {
+    enabled: false,
+    customColor: false,
+    color: "#000000",
+    opacity: 100,
+    width: 1
+  });
+});
+
 test("profile configuration keeps main and permits five additional profiles", () => {
   const config = structuredClone(defaultConfig);
   for (let index = 1; index < MAX_PRESET_COUNT; index += 1) {
@@ -212,6 +225,7 @@ test("configuration migration preserves legacy values and invalid files", async 
     assert.deepEqual(migrated.presets.main.widgetStyle, {
       surfaceOpacity: 100,
       outline: { enabled: true, color: null, opacity: 100, width: 1 },
+      inset: { enabled: true, customColor: false, color: "#000000", opacity: 100, width: 1 },
       shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
     });
     assert.deepEqual(migrated.presets.main.coverPalette, { enabled: false });

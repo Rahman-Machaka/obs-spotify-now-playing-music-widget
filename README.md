@@ -212,7 +212,7 @@ You can change:
 - Dark and light themes
 - Preset accent colors and a custom color picker
 - Per-profile text color and shadow controls, optional automatic readability, and an unfilled progress-track color derived from the accent or explicitly overridden
-- Per-profile panel opacity, outline, and widget-shadow controls; Spotify artwork and logo attribution remain fully opaque
+- Per-profile panel opacity, outline, inner-edge (inset), and widget-shadow controls; inset colors can follow the selected theme or use a custom color, while Spotify artwork and logo attribution remain fully opaque
 - Optional Chromagic mode derives solid panel, text, accent, visualizer, and progress colors locally from the current cover while retaining manual color settings. Its fixed Panel Cascade softens palette changes by updating adjacent panels in sequence.
 - Independent metadata/progress entrance and exit animations: None or Fade. Existing Grow, Shrink, Swing, Tilt, and Slide settings migrate to Fade. Spotify artwork itself remains static.
 - Local and optional Google fonts

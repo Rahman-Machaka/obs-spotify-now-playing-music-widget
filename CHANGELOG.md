@@ -6,8 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-08-06
+
 ### Added
 
+- Added per-profile widget inset controls for enabled state, opacity, and width,
+  with a choice between the selected theme color and a retained custom color.
 - Added six keyboard-accessible dashboard tabs for Setup, Layout, Idle, Colors,
   Type and Motion, and Behavior. The desktop page remains fixed while the
   selected settings pane scrolls independently, and narrow viewports retain a
@@ -57,6 +61,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Gave the Compact progress bar the same configurable outline and drop shadow
+  treatment as its neighboring boxes. Its unfilled area now uses the same panel
+  surface and opacity as those boxes, while the accent fill extends directly to
+  the outline without an additional inner frame.
 - Prevented changing the Chromagic transition setting from replaying a stale
   palette animation; the fixed cascade starts only for an actual palette
   change.
@@ -68,6 +76,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Compatibility
 
+- Existing profiles without explicit inset settings inherit the former inset
+  state from their outline setting, preserving their previous presentation.
 - Existing JSON configuration remains supported. Deprecated animation values
   are normalized during validation and migration rather than discarded.
 - Chromagic transition values previously persisted in profile configuration are

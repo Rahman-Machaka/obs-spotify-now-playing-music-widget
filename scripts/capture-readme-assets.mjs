@@ -456,7 +456,7 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 250));
     await client.send("Runtime.evaluate", { expression: "document.querySelector('.chromagic-setting .toggle').click()" });
     await new Promise((resolve) => setTimeout(resolve, 100));
-    await client.send("Runtime.evaluate", { expression: "window.scrollTo(0, 0)" });
+    await client.send("Runtime.evaluate", { expression: "document.querySelector('.settings-content').scrollTop = 360" });
     await capture(client, join(outputDirectory, "dashboard-colors.png"));
     const chromagicControlState = (await client.send("Runtime.evaluate", {
       expression: `(() => {
@@ -477,6 +477,27 @@ async function main() {
       || !chromagicControlState.thumbInside || !chromagicControlState.manualColorsDisabled) {
       throw new Error(`The Chromagic dashboard control is malformed: ${JSON.stringify(chromagicControlState)}`);
     }
+    const inheritedInsetState = (await client.send("Runtime.evaluate", {
+      expression: `(() => ({
+        enabled: document.querySelector('.widget-inset-setting .toggle')?.getAttribute('aria-checked'),
+        custom: document.querySelector('.custom-inset-setting .toggle')?.getAttribute('aria-checked'),
+        colorInputDisabled: document.querySelector('.widget-inset-controls input[type=color]')?.matches(':disabled'),
+        ranges: document.querySelectorAll('.widget-inset-controls input[type=range]').length
+      }))()`,
+      returnByValue: true
+    })).result.value;
+    if (inheritedInsetState.enabled !== "true" || inheritedInsetState.custom !== "false"
+      || inheritedInsetState.colorInputDisabled !== true || inheritedInsetState.ranges !== 2) {
+      throw new Error(`The theme-derived inset controls are malformed: ${JSON.stringify(inheritedInsetState)}`);
+    }
+    await client.send("Runtime.evaluate", { expression: "document.querySelector('.custom-inset-setting .toggle').click()" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const customInsetColorEnabled = (await client.send("Runtime.evaluate", {
+      expression: "document.querySelector('.widget-inset-controls input[type=color]')?.matches(':disabled') === false",
+      returnByValue: true
+    })).result.value;
+    if (!customInsetColorEnabled) throw new Error("Enabling the custom inset color did not enable its retained color input.");
+    await client.send("Runtime.evaluate", { expression: "document.querySelector('.custom-inset-setting .toggle').click()" });
     await client.send("Runtime.evaluate", { expression: "document.querySelector('.chromagic-setting .toggle').click()" });
 
     for (const [layout, dimensions] of Object.entries(layouts)) {
@@ -516,7 +537,11 @@ async function main() {
             timeFontSize: getComputedStyle(document.querySelector(".time-row")).fontSize,
             progressShadow: getComputedStyle(document.querySelector(".progress-track")).boxShadow,
             progressBorderWidth: getComputedStyle(document.querySelector(".progress-track")).borderTopWidth,
-            progressBorderColor: getComputedStyle(document.querySelector(".progress-track")).borderTopColor
+            progressBorderColor: getComputedStyle(document.querySelector(".progress-track")).borderTopColor,
+            progressBackground: getComputedStyle(document.querySelector(".progress-track")).backgroundColor,
+            progressPadding: getComputedStyle(document.querySelector(".progress-track")).padding,
+            timeRowBorderColor: getComputedStyle(document.querySelector(".time-row")).borderTopColor,
+            timeRowBackground: getComputedStyle(document.querySelector(".time-row")).backgroundColor
           };
         })()`,
         returnByValue: true
@@ -532,6 +557,9 @@ async function main() {
           || !approximatelyEqual(layoutGeometry.centers.visualizer, layoutGeometry.centers.duration, 1)
           || !approximatelyEqual(layoutGeometry.cover.top, layoutGeometry.metadata.top, 1)
           || !approximatelyEqual(layoutGeometry.cover.bottom, layoutGeometry.timeRow.bottom, 1)
+          || layoutGeometry.progressBorderColor !== layoutGeometry.timeRowBorderColor
+          || layoutGeometry.progressBackground !== layoutGeometry.timeRowBackground
+          || layoutGeometry.progressPadding !== "0px"
           || !layoutGeometry.progressShadow.includes("4px 9px") || layoutGeometry.progressBorderWidth !== "1px") {
           throw new Error(`Compact spacing, vertical alignment, or progress shadow is inconsistent: ${JSON.stringify({ metadataInsets, timeInsets, metadataVerticalInsets, ...layoutGeometry })}`);
         }
@@ -658,6 +686,7 @@ async function main() {
       widgetStyle: {
         surfaceOpacity: 50,
         outline: { enabled: true, color: "#123456", opacity: 50, width: 2 },
+        inset: { enabled: true, customColor: true, color: "#abcdef", opacity: 40, width: 3 },
         shadow: { enabled: true, color: "#654321", opacity: 60, blur: 18 }
       }
     })` });
@@ -670,6 +699,7 @@ async function main() {
           borderWidth: metadata.borderLeftWidth,
           borderColor: metadata.borderLeftColor,
           shadow: metadata.boxShadow,
+          inset: getComputedStyle(document.querySelector(".widget")).getPropertyValue("--widget-inset-outline").trim(),
           coverOpacity: getComputedStyle(document.querySelector(".cover img")).opacity,
           logoOpacity: getComputedStyle(document.querySelector(".spotify-logo")).opacity
         };
@@ -678,6 +708,7 @@ async function main() {
     })).result.value;
     if (customWidgetStyle.surfaceOpacity !== "50%" || customWidgetStyle.borderWidth !== "2px"
       || customWidgetStyle.borderColor !== "rgba(18, 52, 86, 0.5)" || customWidgetStyle.shadow === "none"
+      || !customWidgetStyle.inset.includes("3px rgba(171, 205, 239, 0.4")
       || customWidgetStyle.coverOpacity !== "1" || customWidgetStyle.logoOpacity !== "1") {
       throw new Error(`Custom widget surfaces were not applied without dimming Spotify assets: ${JSON.stringify(customWidgetStyle)}`);
     }
@@ -685,6 +716,7 @@ async function main() {
       widgetStyle: {
         surfaceOpacity: 100,
         outline: { enabled: true, color: null, opacity: 100, width: 1 },
+        inset: { enabled: true, customColor: false, color: "#000000", opacity: 100, width: 1 },
         shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
       }
     })` });

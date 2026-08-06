@@ -29,6 +29,7 @@ const fallbackTextStyle: Preset["textStyle"] = {
 const fallbackWidgetStyle: Preset["widgetStyle"] = {
   surfaceOpacity: 100,
   outline: { enabled: true, color: null, opacity: 100, width: 1 },
+  inset: { enabled: true, customColor: false, color: "#000000", opacity: 100, width: 1 },
   shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
 };
 const animations: Array<{ value: Preset["animations"]["enter"]; label: TranslationKey }> = [
@@ -561,6 +562,28 @@ export function App() {
                   onChange={(opacity) => updateWidgetStyle({ outline: { ...widgetStyle.outline, opacity } })} />
                 <RangeField label={t("outlineWidth")} value={widgetStyle.outline.width} min={1} max={4} suffix=" px"
                   onChange={(width) => updateWidgetStyle({ outline: { ...widgetStyle.outline, width } })} />
+              </div>}
+
+              <div className="row-setting compact-row widget-inset-setting">
+                <div><strong>{t("widgetInset")}</strong><small>{t("widgetInsetHint")}</small></div>
+                <Toggle label={t("widgetInset")} checked={widgetStyle.inset.enabled}
+                  onChange={(enabled) => updateWidgetStyle({ inset: { ...widgetStyle.inset, enabled } })} />
+              </div>
+              {widgetStyle.inset.enabled && <div className="widget-style-controls widget-inset-controls">
+                <div className="row-setting compact-row custom-inset-setting">
+                  <div><strong>{t("customInsetColor")}</strong><small>{t("customInsetColorHint")}</small></div>
+                  <Toggle label={t("customInsetColor")} checked={widgetStyle.inset.customColor}
+                    onChange={(customColor) => updateWidgetStyle({ inset: { ...widgetStyle.inset, customColor } })} />
+                </div>
+                <fieldset className="text-style-fields widget-inset-color-fields" disabled={!widgetStyle.inset.customColor}>
+                  <ColorField label={t("insetColor")}
+                    value={widgetStyle.inset.color}
+                    onChange={(color) => updateWidgetStyle({ inset: { ...widgetStyle.inset, color } })} />
+                </fieldset>
+                <RangeField label={t("insetOpacity")} value={widgetStyle.inset.opacity} min={0} max={100} suffix="%"
+                  onChange={(opacity) => updateWidgetStyle({ inset: { ...widgetStyle.inset, opacity } })} />
+                <RangeField label={t("insetWidth")} value={widgetStyle.inset.width} min={1} max={4} suffix=" px"
+                  onChange={(width) => updateWidgetStyle({ inset: { ...widgetStyle.inset, width } })} />
               </div>}
 
               <div className="row-setting compact-row">
