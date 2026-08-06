@@ -1,13 +1,17 @@
 /** @jsxImportSource preact */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
-import type { ComponentChildren, JSX } from "preact";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import type { JSX } from "preact";
 import type { AppConfig, PlaybackState, Preset, ServerMessage } from "../../shared/schema";
 import { getAutomaticTextStyle, getDerivedProgressTrackColor, hexToRgba } from "../../shared/color-contrast";
 import { extractCoverPalette, FALLBACK_COVER_PALETTE, type CoverPalette } from "../../shared/cover-palette";
-import { getCompensatedSpotifyLogoWidth, getDesignDimensions, getLayoutScaleLimit } from "../../shared/layout-dimensions";
 import { reconcilePlaybackProgress } from "../../shared/playback-progress";
 import spotifyLogoBlack from "../assets/spotify-logo-black.svg";
 import spotifyLogoWhite from "../assets/spotify-logo-white.svg";
+import { MusicNoteIcon } from "./components/atoms/MusicNoteIcon";
+import { OverflowText } from "./components/atoms/OverflowText";
+import { StatusCard } from "./components/molecules/StatusCard";
+import { Visualizer } from "./components/molecules/Visualizer";
+import { WidgetScaler } from "./components/organisms/WidgetScaler";
 import { widgetLanguage, widgetTranslator, type WidgetTranslationKey } from "./i18n";
 
 const emptyPlayback: PlaybackState = { connected: false, status: "checking", error: null, retryAt: null, isPlaying: false, progressMs: 0, observedAt: Date.now(), item: null, lastPlayback: null };
@@ -24,6 +28,14 @@ const fallbackWidgetStyle: Preset["widgetStyle"] = {
   outline: { enabled: true, color: null, opacity: 100, width: 1 },
   shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
 };
+
+function palettesMatch(first: CoverPalette, second: CoverPalette): boolean {
+  return first.surface === second.surface
+    && first.accent === second.accent
+    && first.track === second.track
+    && first.text === second.text
+    && first.artistText === second.artistText;
+}
 
 function presetName(): string {
   const queryPreset = new URLSearchParams(location.search).get("preset");
@@ -44,6 +56,10 @@ export function Widget() {
   const [visible, setVisible] = useState(false);
   const [serverConnection, setServerConnection] = useState<ServerConnectionState>("checking");
   const [coverPalette, setCoverPalette] = useState<CoverPalette>(FALLBACK_COVER_PALETTE);
+  const [paletteTransition, setPaletteTransition] = useState<{
+    previousSurface: string;
+    cycle: number;
+  }>({ previousSurface: FALLBACK_COVER_PALETTE.surface, cycle: 0 });
   const [coverContentReady, setCoverContentReady] = useState(true);
   const [idleMediaFailed, setIdleMediaFailed] = useState(false);
   const lastTrack = useRef<string | null>(null);
@@ -51,7 +67,19 @@ export function Widget() {
   const progressTrack = useRef<string | null>(null);
   const progressWasPlaying = useRef(false);
   const lastProgressTick = useRef(Date.now());
+  const coverPaletteRef = useRef<CoverPalette>(FALLBACK_COVER_PALETTE);
   const selectedPreset = presetName();
+
+  const applyCoverPalette = useCallback((nextPalette: CoverPalette, animate: boolean) => {
+    const previousPalette = coverPaletteRef.current;
+    if (palettesMatch(previousPalette, nextPalette)) return;
+    coverPaletteRef.current = nextPalette;
+    setCoverPalette(nextPalette);
+    setPaletteTransition((current) => ({
+      previousSurface: animate ? previousPalette.surface : nextPalette.surface,
+      cycle: animate ? current.cycle + 1 : current.cycle
+    }));
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = widgetLanguage(config?.language);
@@ -228,15 +256,15 @@ export function Widget() {
 
   useEffect(() => {
     if (!view.coverUrl) {
-      setCoverPalette(FALLBACK_COVER_PALETTE);
+      applyCoverPalette(FALLBACK_COVER_PALETTE, false);
       return;
     }
-    if (preset?.cover.mode !== "none" || (!preset.cover.glow && !preset.coverPalette?.enabled)) return;
+    if (!preset?.cover.glow && !preset?.coverPalette?.enabled) return;
     const image = new Image();
-    image.onload = () => setCoverPalette(extractPaletteFromImage(image));
+    image.onload = () => applyCoverPalette(extractPaletteFromImage(image), Boolean(preset.coverPalette?.enabled));
     image.src = view.coverUrl;
     return () => { image.onload = null; };
-  }, [view.coverUrl, preset?.cover.glow, preset?.cover.mode, preset?.coverPalette?.enabled]);
+  }, [applyCoverPalette, view.coverUrl, preset?.cover.glow, preset?.coverPalette?.enabled]);
 
   useEffect(() => setIdleMediaFailed(false), [resolvedPreset, preset?.emptyState.media.revision]);
 
@@ -288,6 +316,7 @@ export function Widget() {
     "--font": preset.fontFamily,
     "--cover-color": coverPalette.surface,
     ...(paletteEnabled ? { "--panel": coverPalette.surface } : {}),
+    "--previous-panel": paletteTransition.previousSurface,
     "--idle-opacity": String(preset.emptyState.dim.enabled ? 1 - preset.emptyState.dim.percent / 100 : 1),
     "--text-shadow": textShadow,
     "--text-filter": textFilter,
@@ -332,10 +361,14 @@ export function Widget() {
 
   return (
     <WidgetScaler layout={preset.layout} showCover={preset.cover.mode === "square"}>
-      <main className={`widget theme-${preset.theme} layout-${preset.layout} ${preset.cover.mode === "square" ? "with-cover" : "without-cover"} ${paletteEnabled ? "cover-palette" : ""} ${idle ? "is-idle" : ""} enter-${preset.animations.enter} exit-${preset.animations.exit} ${visible ? "is-visible" : "is-hidden"}`} style={style}>
+      <main className={`widget theme-${preset.theme} layout-${preset.layout} ${preset.cover.mode === "square" ? "with-cover" : "without-cover"} ${paletteEnabled ? `cover-palette palette-transition-cascade palette-cycle-${paletteTransition.cycle % 2 ? "a" : "b"}` : ""} ${idle ? "is-idle" : ""} enter-${preset.animations.enter} exit-${preset.animations.exit} ${visible ? "is-visible" : "is-hidden"}`} style={style}>
       <div className="cover panel" aria-hidden={preset.cover.mode === "none"}>
         {preset.cover.mode === "square" && coverContentReady && (view.coverUrl
-          ? <img src={view.coverUrl} alt="" onLoad={(event) => setCoverPalette(extractPaletteFromImage(event.currentTarget))} />
+          ? <img src={view.coverUrl} alt="" onLoad={(event) => {
+            if (preset.cover.glow || preset.coverPalette?.enabled) {
+              applyCoverPalette(extractPaletteFromImage(event.currentTarget), Boolean(preset.coverPalette?.enabled));
+            }
+          }} />
           : showCustomIdleMedia === "video"
             ? <video className="idle-media" src={idleMediaUrl} style={mediaStyle} autoPlay loop muted playsInline onError={() => setIdleMediaFailed(true)} />
             : showCustomIdleMedia === "image"
@@ -368,63 +401,6 @@ export function Widget() {
   );
 }
 
-function WidgetScaler({ layout, showCover, children }: { layout: Preset["layout"]; showCover: boolean; children: ComponentChildren }) {
-  const safeAreaRef = useRef<HTMLDivElement>(null);
-  const coverMode = showCover ? "square" : "none";
-  const designSize = getDesignDimensions(layout, coverMode);
-  const [frame, setFrame] = useState({ scale: 1, width: designSize.width });
-
-  useLayoutEffect(() => {
-    const safeArea = safeAreaRef.current;
-    if (!safeArea) return;
-    const updateScale = () => {
-      if (layout === "minimal") {
-        const scale = Math.max(.01, Math.min(
-          getLayoutScaleLimit(layout, coverMode),
-          safeArea.clientHeight / designSize.height
-        ));
-        setFrame({ scale, width: safeArea.clientWidth / scale });
-        return;
-      }
-      setFrame({
-        scale: Math.min(
-          safeArea.clientWidth / designSize.width,
-          safeArea.clientHeight / designSize.height
-        ),
-        width: designSize.width
-      });
-    };
-    const observer = new ResizeObserver(updateScale);
-    observer.observe(safeArea);
-    updateScale();
-    return () => observer.disconnect();
-  }, [coverMode, designSize.height, designSize.width, layout]);
-
-  const scalerStyle: JSX.CSSProperties & Record<"--spotify-logo-width", string> = {
-    width: frame.width,
-    height: designSize.height,
-    transform: `scale(${frame.scale})`,
-    "--spotify-logo-width": `${getCompensatedSpotifyLogoWidth(frame.scale)}px`
-  };
-
-  return <div className="widget-safe-area" ref={safeAreaRef}>
-    <div className="widget-scale" style={scalerStyle}>
-      {children}
-    </div>
-  </div>;
-}
-
-function StatusCard({ title, detail, action, animation }: { title: string; detail: string; action: string; animation: Preset["animations"]["enter"] }) {
-  return <main className={`widget-status status-enter-${animation}`} role="status" aria-live="polite">
-    <span className="status-symbol" aria-hidden="true">!</span>
-    <div><strong>{title}</strong><p>{detail}</p><a href="/dashboard" target="_blank" rel="noreferrer">{action}</a></div>
-  </main>;
-}
-
-function MusicNoteIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" focusable="false" aria-hidden="true"><path d="M9 18V5l10-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="16" cy="16" r="3" /></svg>;
-}
-
 function getWidgetStatus(
   status: PlaybackState["status"],
   t: (key: WidgetTranslationKey) => string
@@ -435,74 +411,6 @@ function getWidgetStatus(
   if (status === "rate_limited") return { title: t("rateLimitedTitle"), detail: t("rateLimitedText") };
   if (status === "error") return { title: t("errorTitle"), detail: t("errorText") };
   return null;
-}
-
-function Visualizer({ playing }: { playing: boolean }) {
-  const visualizerRef = useRef<HTMLSpanElement>(null);
-  const [barCount, setBarCount] = useState(10);
-
-  useEffect(() => {
-    const visualizer = visualizerRef.current;
-    if (!visualizer) return;
-    const updateBarCount = () => {
-      const visualizerStyle = getComputedStyle(visualizer);
-      const firstBar = visualizer.querySelector("i");
-      const barWidth = firstBar ? Number.parseFloat(getComputedStyle(firstBar).width) : 4;
-      const gap = Number.parseFloat(visualizerStyle.columnGap) || 0;
-      const availableBars = Math.floor((visualizer.clientWidth + gap) / Math.max(1, barWidth + gap));
-      setBarCount(Math.max(5, Math.min(32, availableBars)));
-    };
-    const observer = new ResizeObserver(updateBarCount);
-    observer.observe(visualizer);
-    updateBarCount();
-    return () => observer.disconnect();
-  }, []);
-
-  return <span ref={visualizerRef} className={`visualizer ${playing ? "playing" : ""}`}>
-    {Array.from({ length: barCount }, (_, bar) => <i key={bar} style={{ "--bar-index": bar } as JSX.CSSProperties} />)}
-  </span>;
-}
-
-function OverflowText({ text, kind }: { text: string; kind: "title" | "artist" }) {
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLElement>(null);
-  const [distance, setDistance] = useState(0);
-
-  useEffect(() => {
-    const measure = () => {
-      const viewport = viewportRef.current;
-      const content = textRef.current;
-      if (!viewport || !content) return;
-      setDistance(Math.max(0, Math.ceil(content.scrollWidth - viewport.clientWidth)));
-    };
-    const observer = new ResizeObserver(measure);
-    if (viewportRef.current) observer.observe(viewportRef.current);
-    if (textRef.current) observer.observe(textRef.current);
-    void document.fonts.ready.then(measure);
-    measure();
-    return () => observer.disconnect();
-  }, [text]);
-
-  useEffect(() => {
-    const content = textRef.current;
-    if (!content || distance <= 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const scrollDuration = Math.max(3000, distance / 24 * 1000);
-    const totalDuration = 10_000 + scrollDuration + 5_000 + scrollDuration;
-    const animation = content.animate([
-      { transform: "translateX(0)", offset: 0, easing: "linear" },
-      { transform: "translateX(0)", offset: 10_000 / totalDuration, easing: "ease-in-out" },
-      { transform: `translateX(-${distance}px)`, offset: (10_000 + scrollDuration) / totalDuration, easing: "linear" },
-      { transform: `translateX(-${distance}px)`, offset: (15_000 + scrollDuration) / totalDuration, easing: "ease-in-out" },
-      { transform: "translateX(0)", offset: 1 }
-    ], { duration: totalDuration, iterations: Infinity });
-    return () => animation.cancel();
-  }, [distance, text]);
-
-  const content = kind === "title"
-    ? <strong ref={textRef}>{text}</strong>
-    : <span ref={textRef} className="artist">{text}</span>;
-
-  return <div ref={viewportRef} className={`scroll-viewport ${kind}`} title={text}>{content}</div>;
 }
 
 function formatTime(milliseconds: number): string {

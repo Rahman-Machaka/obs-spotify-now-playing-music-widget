@@ -1,0 +1,64 @@
+// Template: Portrait layout
+
+.layout-portrait {
+  grid-template-columns: 1fr;
+  grid-template-rows: 396px 118px 90px;
+  gap: 0;
+  padding: 8px;
+
+  &.without-cover {
+    grid-template-rows: 0 118px 90px;
+
+    .cover {
+      margin-bottom: 0;
+    }
+  }
+
+  .cover {
+    grid-row: 1;
+    margin: 0 0 12px;
+  }
+  .metadata {
+    grid-row: 2;
+    margin: 0 0 6px;
+    padding: 10px 22px;
+  }
+
+  .scroll-viewport {
+    &.title {
+      height: 32px;
+    }
+    &.artist {
+      height: 24px;
+      margin-top: 3px;
+    }
+    strong {
+      font-size: 25px;
+      line-height: 32px;
+    }
+  }
+
+  .artist {
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .attribution-row {
+    margin-top: 8px;
+  }
+  .progress-panel {
+    grid-row: 3;
+    margin: 6px 0 0;
+    padding: 15px 22px;
+  }
+  .time-row {
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .visualizer {
+    height: 24px;
+  }
+  .progress-track {
+    height: 8px;
+    margin-top: 12px;
+  }
+}

@@ -1,0 +1,64 @@
+// Molecule: actionable widget status card
+
+.widget-status {
+  width: min(calc(100% - 24px), 430px);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid #343844;
+  border-radius: 14px;
+  color: #f5f6fa;
+  background: #14161def;
+  box-shadow: 0 8px 28px #0009;
+  font-family: Inter, system-ui, sans-serif;
+
+  .status-symbol {
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #d8a94f66;
+    border-radius: 50%;
+    color: #f2c66f;
+    background: #d8a94f14;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  div {
+    min-width: 0;
+  }
+  strong {
+    display: block;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  p {
+    margin: 4px 0 0;
+    color: #aeb3c1;
+    font-size: 11px;
+    line-height: 16px;
+  }
+  a {
+    display: inline-block;
+    margin-top: 9px;
+    color: #c797ef;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+
+    &:hover {
+      color: #dfb8ff;
+      text-decoration: underline;
+    }
+  }
+
+  &.status-enter-none {
+    opacity: 1;
+  }
+  &.status-enter-fade {
+    animation: reveal-fade 0.45s ease-out both;
+  }
+}

@@ -1,12 +1,26 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AppConfig, PlaybackStatus, Preset, ServerMessage } from "../../shared/schema";
 import { getDerivedProgressTrackColor } from "../../shared/color-contrast";
 import { MAIN_PRESET_ID, MAX_PRESET_COUNT } from "../../shared/profiles";
 import { getRecommendedSourceDimensions } from "../../shared/layout-dimensions";
-import { extractGoogleFontFamily } from "../../shared/google-fonts";
 import { browserLanguage, translator, type TranslationKey } from "./i18n";
+import { CheckIcon, ChevronDownIcon, ExternalLinkIcon, MusicNoteIcon, PlusIcon, XIcon } from "./components/atoms/Icons";
+import { Toggle } from "./components/atoms/Toggle";
+import { AnimationChoice, Choice, ColorField, RangeField } from "./components/molecules/Fields";
+import { CollapsibleSection, Section } from "./components/molecules/Section";
+import { GoogleFontPicker } from "./components/organisms/GoogleFontPicker";
+import { PreviewFrame } from "./components/organisms/PreviewFrame";
 
 const colors = ["#39bde0", "#36c0bb", "#b9cc12", "#ffca38", "#ffa12e", "#ff631f", "#e4323b", "#ef6181", "#9d61dc"];
+type DashboardTab = "setup" | "layout" | "idle" | "colors" | "motion" | "behavior";
+const dashboardTabs: Array<{ id: DashboardTab; label: TranslationKey }> = [
+  { id: "setup", label: "tabSetup" },
+  { id: "layout", label: "tabLayout" },
+  { id: "idle", label: "tabIdle" },
+  { id: "colors", label: "tabColors" },
+  { id: "motion", label: "tabMotion" },
+  { id: "behavior", label: "tabBehavior" }
+];
 const fallbackTextStyle: Preset["textStyle"] = {
   color: null,
   autoContrast: false,
@@ -17,13 +31,9 @@ const fallbackWidgetStyle: Preset["widgetStyle"] = {
   outline: { enabled: true, color: null, opacity: 100, width: 1 },
   shadow: { enabled: true, color: null, opacity: 100, blur: 9 }
 };
-const animations: Array<{ value: Preset["animations"]["enter"]; label: TranslationKey; direction?: TranslationKey }> = [
+const animations: Array<{ value: Preset["animations"]["enter"]; label: TranslationKey }> = [
   { value: "none", label: "animationNone" },
-  { value: "fade", label: "animationFade" },
-  { value: "slide-left", label: "animationSlide", direction: "directionLeft" },
-  { value: "slide-right", label: "animationSlide", direction: "directionRight" },
-  { value: "slide-top", label: "animationSlide", direction: "directionTop" },
-  { value: "slide-bottom", label: "animationSlide", direction: "directionBottom" }
+  { value: "fade", label: "animationFade" }
 ];
 
 function createProfileId(name: string, presets: AppConfig["presets"]): string {
@@ -52,6 +62,8 @@ export function App() {
   const [selectedPresetId, setSelectedPresetId] = useState(MAIN_PRESET_ID);
   const [newProfileName, setNewProfileName] = useState("");
   const [profileNameDraft, setProfileNameDraft] = useState("");
+  const [activeTab, setActiveTab] = useState<DashboardTab>("layout");
+  const setupTabSelected = useRef(false);
   const saveTimer = useRef<number | null>(null);
   const saveFeedbackTimer = useRef<number | null>(null);
   const copiedTimer = useRef<number | null>(null);
@@ -64,7 +76,13 @@ export function App() {
   }, [language]);
 
   useEffect(() => {
-    if (config) setSpotifySetupOpen(!config.spotify.authorizedAt || spotifyStatus === "reauthorize");
+    if (!config) return;
+    const requiresSetup = !config.spotify.authorizedAt || spotifyStatus === "reauthorize";
+    setSpotifySetupOpen(requiresSetup);
+    if (requiresSetup && !setupTabSelected.current) {
+      setupTabSelected.current = true;
+      setActiveTab("setup");
+    }
   }, [config?.spotify.authorizedAt, spotifyStatus]);
 
   useEffect(() => {
@@ -300,6 +318,23 @@ export function App() {
 
       <div className="workspace">
         <div className="settings">
+          <nav className="settings-tabs" role="tablist" aria-label={t("settingsNavigation")}>
+            {dashboardTabs.map((tab, index) => <button
+              id={`dashboard-tab-${tab.id}`}
+              data-dashboard-tab={tab.id}
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls="dashboard-tab-panel"
+              tabIndex={activeTab === tab.id ? 0 : -1}
+              onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(event) => handleDashboardTabKeyDown(event, index, setActiveTab)}
+            >{t(tab.label)}</button>)}
+          </nav>
+          <div className="settings-content">
+            <div id="dashboard-tab-panel" className="settings-tab-panel" role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`}>
+          {activeTab === "setup" && <>
           <CollapsibleSection
             title={t("spotifySetup")}
             subtitle={spotifyStatus === "reauthorize" ? t("spotifyReauthorize") : config.spotify.authorizedAt ? t("spotifySetupComplete") : t("spotifySetupRequired")}
@@ -387,7 +422,9 @@ export function App() {
 
             {selectedPresetId !== MAIN_PRESET_ID && <button type="button" className="danger-button" onClick={deleteSelectedProfile}>{t("profileDelete")}</button>}
           </Section>
+          </>}
 
+          {activeTab === "layout" &&
           <Section title={t("appearance")}>
             <span className="field-label">{t("playerAppearance")}</span>
             <div className="choice-grid layouts">
@@ -409,8 +446,9 @@ export function App() {
               <div><strong>{t("coverGlow")}</strong><small>{t("coverGlowHint")}</small></div>
               <Toggle label={t("coverGlow")} checked={preset.cover.glow} disabled={preset.coverPalette.enabled} onChange={(glow) => updatePreset({ cover: { ...preset.cover, glow } })} />
             </div>
-          </Section>
+          </Section>}
 
+          {activeTab === "idle" &&
           <Section title={t("nothingPlaying")}>
             <div className="row-setting">
               <div><strong>{t("rememberLastPlayback")}</strong><small>{t("rememberLastPlaybackHint")}</small></div>
@@ -476,8 +514,9 @@ export function App() {
             </div>
             {preset.emptyState.dim.enabled && <RangeField label={t("dimAmount")} value={preset.emptyState.dim.percent} min={0} max={90} suffix="%"
               onChange={(percent) => updateEmptyState({ dim: { ...preset.emptyState.dim, percent } })} />}
-          </Section>
+          </Section>}
 
+          {activeTab === "colors" &&
           <Section title={t("colors")}>
             <div className="row-setting chromagic-setting">
               <div><strong>{t("chromagic")}</strong><small>{t("chromagicHint")}</small></div>
@@ -582,20 +621,22 @@ export function App() {
                 </fieldset>
               </fieldset>
             </div>
-          </Section>
+          </Section>}
 
+          {activeTab === "motion" &&
           <Section title={t("animations")}>
             <span className="field-label">{t("revealAnimation")}</span>
             <div className="animation-grid">
-              {animations.map((animation) => <AnimationChoice key={animation.value} active={preset.animations.enter === animation.value} label={t(animation.label)} direction={animation.direction ? t(animation.direction) : undefined} onClick={() => updatePreset({ animations: { ...preset.animations, enter: animation.value } })} />)}
+              {animations.map((animation) => <AnimationChoice key={animation.value} active={preset.animations.enter === animation.value} label={t(animation.label)} onClick={() => updatePreset({ animations: { ...preset.animations, enter: animation.value } })} />)}
             </div>
             <span className="field-label spaced">{t("exitAnimation")}</span>
             <div className="animation-grid">
-              {animations.map((animation) => <AnimationChoice key={animation.value} active={preset.animations.exit === animation.value} label={t(animation.label)} direction={animation.direction ? t(animation.direction) : undefined} onClick={() => updatePreset({ animations: { ...preset.animations, exit: animation.value } })} />)}
+              {animations.map((animation) => <AnimationChoice key={animation.value} active={preset.animations.exit === animation.value} label={t(animation.label)} onClick={() => updatePreset({ animations: { ...preset.animations, exit: animation.value } })} />)}
             </div>
             <GoogleFontPicker preset={preset} t={t} onChange={(fontFamily, fontSource) => updatePreset({ fontFamily, fontSource })} />
-          </Section>
+          </Section>}
 
+          {activeTab === "behavior" &&
           <Section title={t("visibility")}>
             <div className="row-setting">
               <div><strong>{t("hideOnPause")}</strong><small>{t("hideOnPauseHint")}</small></div>
@@ -609,7 +650,9 @@ export function App() {
               <div><strong>{t("visualizer")}</strong><small>{t("visualizerHint")}</small></div>
               <Toggle label={t("visualizer")} checked={preset.visualizer.visible} onChange={(visible) => updatePreset({ visualizer: { visible } })} />
             </div>
-          </Section>
+          </Section>}
+            </div>
+          </div>
         </div>
 
         <aside className="preview-panel">
@@ -637,78 +680,17 @@ export function App() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section><h2>{title}</h2>{children}</section>;
-}
-
-function CollapsibleSection({ title, subtitle, complete, open, onToggle, expandLabel, collapseLabel, children }: {
-  title: string;
-  subtitle: string;
-  complete: boolean;
-  open: boolean;
-  onToggle: () => void;
-  expandLabel: string;
-  collapseLabel: string;
-  children: React.ReactNode;
-}) {
-  const buttonId = useId();
-  const contentId = useId();
-  return <section className={`collapsible-section ${open ? "open" : ""}`}>
-    <button id={buttonId} className="collapsible-header" type="button" aria-expanded={open} aria-controls={contentId} aria-label={`${title}: ${open ? collapseLabel : expandLabel}`} onClick={onToggle}>
-      <span><strong className="collapsible-title">{title}</strong><small className={complete ? "complete" : "required"}>{subtitle}</small></span>
-      <span className="collapsible-chevron" aria-hidden="true"><ChevronDownIcon /></span>
-    </button>
-    {open && <div id={contentId} className="collapsible-content" role="region" aria-labelledby={buttonId}>{children}</div>}
-  </section>;
-}
-
-function Choice({ active, label, onClick, children }: { active: boolean; label: string; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" aria-pressed={active} className={`choice ${active ? "active" : ""}`} onClick={onClick}><div className="choice-visual">{children}</div><span>{label}</span></button>;
-}
-
-function AnimationChoice({ active, label, direction, onClick }: { active: boolean; label: string; direction?: string; onClick: () => void }) {
-  return <button type="button" aria-pressed={active} className={active ? "active" : ""} onClick={onClick}><strong>{label}</strong>{direction && <small>{direction}</small>}</button>;
-}
-
-function Toggle({ label, checked, disabled = false, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void }) {
-  return <button type="button" role="switch" aria-label={label} aria-checked={checked} disabled={disabled} className={`toggle ${checked ? "on" : ""}`} onClick={() => onChange(!checked)}><span /></button>;
-}
-
-function RangeField({ label, value, min, max, step = 1, suffix, disabled = false, onChange }: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  suffix: string;
-  disabled?: boolean;
-  onChange: (value: number) => void;
-}) {
-  return <label className="range-field">
-    <span><strong>{label}</strong><output>{Number.isInteger(value) ? value : value.toFixed(2)}{suffix}</output></span>
-    <input type="range" min={min} max={max} step={step} value={value} disabled={disabled} onChange={(event) => onChange(Number(event.target.value))} />
-  </label>;
-}
-
-function ColorField({ label, hint, value, resetLabel, onReset, onChange }: {
-  label: string;
-  hint?: string;
-  value: string;
-  resetLabel?: string;
-  onReset?: () => void;
-  onChange: (value: string) => void;
-}) {
-  return <div className="color-setting">
-    <div><strong>{label}</strong>{hint && <small>{hint}</small>}</div>
-    <div className="color-setting-controls">
-      <label className="color-picker" style={{ background: value }}>
-        <span className="visually-hidden">{label}</span>
-        <input aria-label={label} type="color" value={value} onChange={(event) => onChange(event.target.value)} />
-      </label>
-      <code>{value.toUpperCase()}</code>
-      {resetLabel && onReset && <button type="button" className="text-button" onClick={onReset}>{resetLabel}</button>}
-    </div>
-  </div>;
+function handleDashboardTabKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number, selectTab: (tab: DashboardTab) => void) {
+  let nextIndex = index;
+  if (event.key === "ArrowRight") nextIndex = (index + 1) % dashboardTabs.length;
+  else if (event.key === "ArrowLeft") nextIndex = (index - 1 + dashboardTabs.length) % dashboardTabs.length;
+  else if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = dashboardTabs.length - 1;
+  else return;
+  event.preventDefault();
+  const nextTab = dashboardTabs[nextIndex];
+  selectTab(nextTab.id);
+  event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("[role=tab]")[nextIndex]?.focus();
 }
 
 function idleMediaPreviewStyle(preset: Preset): React.CSSProperties {
@@ -717,121 +699,4 @@ function idleMediaPreviewStyle(preset: Preset): React.CSSProperties {
     objectPosition: `${preset.emptyState.media.positionX}% ${preset.emptyState.media.positionY}%`,
     transform: `scale(${preset.emptyState.media.crop ? preset.emptyState.media.zoom : 1})`
   };
-}
-
-function ChevronDownIcon() {
-  return <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" focusable="false" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>;
-}
-
-function XIcon() {
-  return <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" focusable="false" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" /></svg>;
-}
-
-function MusicNoteIcon() {
-  return <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" focusable="false" aria-hidden="true"><path d="M9 18V5l10-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="16" cy="16" r="3" /></svg>;
-}
-
-function CheckIcon() {
-  return <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" focusable="false" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>;
-}
-
-function PlusIcon() {
-  return <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" focusable="false" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>;
-}
-
-function ExternalLinkIcon() {
-  return <svg className="ui-icon external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" focusable="false" aria-hidden="true"><path d="M14 5h5v5M19 5l-9 9" /><path d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" /></svg>;
-}
-
-function PreviewFrame({ src, width, height, title }: { src: string; width: number; height: number; title: string }) {
-  const stageRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const updateScale = () => {
-      const availableWidth = Math.max(1, stage.clientWidth - 48);
-      const availableHeight = Math.max(1, stage.clientHeight - 48);
-      setScale(Math.min(1, availableWidth / width, availableHeight / height));
-    };
-    const observer = new ResizeObserver(updateScale);
-    observer.observe(stage);
-    updateScale();
-    return () => observer.disconnect();
-  }, [width, height]);
-
-  return <div className="preview-stage" ref={stageRef}>
-    <div className="preview-viewport" style={{ width: width * scale, height: height * scale }}>
-      <iframe title={title} src={src} style={{ width, height, transform: `scale(${scale})` }} />
-    </div>
-  </div>;
-}
-
-function GoogleFontPicker({ preset, t, onChange }: {
-  preset: Preset;
-  t: (key: TranslationKey) => string;
-  onChange: (fontFamily: string, fontSource: Preset["fontSource"]) => void;
-}) {
-  const [url, setUrl] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const existing = document.getElementById("dashboard-google-font");
-    if (preset.fontSource !== "google") {
-      existing?.remove();
-      return;
-    }
-    const link = (existing as HTMLLinkElement | null) ?? document.createElement("link");
-    link.id = "dashboard-google-font";
-    link.rel = "stylesheet";
-    link.href = `https://fonts.googleapis.com/css2?${new URLSearchParams({ family: preset.fontFamily, display: "swap" })}`;
-    if (!existing) document.head.appendChild(link);
-  }, [preset.fontFamily, preset.fontSource]);
-
-  const applyGoogleFont = () => {
-    const result = extractGoogleFontFamily(url);
-    if (!result) {
-      setError(t("googleFontsInvalid"));
-      return;
-    }
-    setError("");
-    onChange(result, "google");
-  };
-
-  return <div className="font-picker">
-    <label className="field-label spaced" htmlFor="font">{t("fontFamily")}</label>
-    <span className="select-control font-select">
-      <select id="font" value={preset.fontSource === "local" ? preset.fontFamily : ""}
-        onChange={(event) => onChange(event.target.value, "local")}>
-        {preset.fontSource === "google" && <option value="">Google: {preset.fontFamily}</option>}
-        <option>Poppins</option><option>Inter</option><option>system-ui</option>
-      </select>
-      <ChevronDownIcon />
-    </span>
-
-    <div className="google-font-card">
-      <div className="google-font-heading">
-        <div><strong>{t("googleFontsTitle")}</strong><small>{t("googleFontsOptional")}</small></div>
-        <a href="https://fonts.google.com/" target="_blank" rel="noreferrer">{t("googleFontsBrowse")}<ExternalLinkIcon /></a>
-      </div>
-      <ol>
-        <li>{t("googleFontsStep1")}</li>
-        <li>{t("googleFontsStep2")}</li>
-        <li>{t("googleFontsStep3")}</li>
-      </ol>
-      <div className="font-url-row">
-        <input id="google-font-url" aria-label={t("googleFontsUrl")} aria-invalid={Boolean(error)} aria-describedby={error ? "google-font-error" : undefined}
-          value={url} onChange={(event) => { setUrl(event.target.value); setError(""); }}
-          onKeyDown={(event) => { if (event.key === "Enter") applyGoogleFont(); }}
-          placeholder="https://fonts.google.com/specimen/Roboto+Slab" spellCheck={false} />
-        <button type="button" className="secondary-button" disabled={!url.trim()} onClick={applyGoogleFont}>{t("googleFontsUse")}</button>
-      </div>
-      {error && <p className="font-error" id="google-font-error">{error}</p>}
-      {preset.fontSource === "google" && <div className="selected-google-font">
-        <span>{t("googleFontsActive")}</span><strong style={{ fontFamily: `'${preset.fontFamily}', sans-serif` }}>{preset.fontFamily}</strong>
-      </div>}
-      <p className="privacy-note">{t("googleFontsPrivacy")}</p>
-    </div>
-  </div>;
 }

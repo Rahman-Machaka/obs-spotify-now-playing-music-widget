@@ -1,0 +1,127 @@
+// Layouts: responsive dashboard composition and motion preferences
+
+@media (max-width: 1000px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+  }
+  body {
+    overflow: auto;
+  }
+  .app-shell {
+    height: auto;
+    min-height: 100vh;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .settings {
+    min-height: 560px;
+    overflow: hidden;
+  }
+  .settings-content {
+    max-height: 720px;
+  }
+  .preview-panel {
+    grid-row: 1;
+    max-height: none;
+    overflow: hidden;
+  }
+}
+@media (max-width: 620px) {
+  .app-shell {
+    padding: 14px;
+  }
+  .topbar {
+    align-items: start;
+    gap: 20px;
+  }
+  .topbar-controls {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+    padding: 9px;
+  }
+  .language-picker {
+    justify-content: space-between;
+  }
+  .status-cluster {
+    flex-wrap: wrap;
+    justify-content: end;
+    padding: 9px 0 0;
+    border-top: 1px solid #2c2f39;
+    border-left: 0;
+  }
+  .save-state {
+    width: 100%;
+    text-align: right;
+    margin: 0;
+  }
+  .settings-tabs {
+    justify-content: flex-start;
+
+    button {
+      flex-grow: 0;
+    }
+  }
+  .choice-grid.layouts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .animation-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .font-url-row,
+  .google-font-heading,
+  .idle-media-heading,
+  .color-setting {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .color-setting {
+    justify-content: center;
+    padding: 14px 0;
+  }
+  .color-setting-controls {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .font-url-row {
+    .secondary-button {
+      width: 100%;
+    }
+  }
+  .google-font-heading {
+    a {
+      margin-top: 4px;
+    }
+  }
+  .idle-media-actions {
+    align-items: flex-start;
+  }
+  .profile-create-row {
+    flex-direction: column;
+
+    .secondary-button {
+      width: 100%;
+    }
+  }
+  .input-row {
+    flex-direction: column;
+  }
+  .primary {
+    height: 46px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

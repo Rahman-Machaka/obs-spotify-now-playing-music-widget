@@ -26,6 +26,7 @@ A local Spotify now-playing widget for OBS Studio. It comes with a browser dashb
 - [Troubleshooting](#troubleshooting)
 - [Known Limitations](#known-limitations)
 - [Project Structure](#project-structure)
+- [Changelog](CHANGELOG.md)
 - [License and Third-Party Assets](#license-and-third-party-assets)
 
 ## Features
@@ -76,7 +77,7 @@ The checkerboard is a documentation preview background. The OBS widget itself re
 
 | Cover reflow | Visibility animation |
 |---|---|
-| ![Compact layout smoothly fills the space when its cover is hidden](docs/images/cover-reflow.gif) | ![Boxy layout fading out and sliding back in](docs/images/visibility-animation.gif) |
+| ![Compact layout smoothly fills the space when its cover is hidden](docs/images/cover-reflow.gif) | ![Boxy layout fading out and back in](docs/images/visibility-animation.gif) |
 
 ## Architecture
 
@@ -99,6 +100,8 @@ Local Node.js / Fastify server on 127.0.0.1:3847
 ```
 
 The server binds only to `127.0.0.1`. It is not exposed to the local network.
+
+Dashboard and widget presentation follow a small Atomic Design structure. Reusable UI components are grouped as atoms, molecules, and organisms, while SCSS separates shared tokens and foundations from components, responsive layouts, and motion utilities. Component-owned descendants, states, and pseudo-elements use shallow nesting without coupling independent utility classes. Vite compiles SCSS to the local production CSS; Sass is not loaded in OBS at runtime.
 
 ## Requirements
 
@@ -197,7 +200,7 @@ user-read-currently-playing
 
 ## Dashboard
 
-The dashboard saves changes automatically and broadcasts them to every connected widget instance.
+The dashboard saves changes automatically and broadcasts them to every connected widget instance. On desktop, its six category tabs keep the preview visible and confine scrolling to the active settings pane. Narrow windows switch to a single-column layout.
 
 The Spotify setup guide opens automatically while authorization is still required. After a successful connection it starts collapsed, shows a ready status, and can be expanded manually at any time.
 
@@ -210,8 +213,8 @@ You can change:
 - Preset accent colors and a custom color picker
 - Per-profile text color and shadow controls, optional automatic readability, and an unfilled progress-track color derived from the accent or explicitly overridden
 - Per-profile panel opacity, outline, and widget-shadow controls; Spotify artwork and logo attribution remain fully opaque
-- Optional Chromagic mode derives solid panel, text, accent, visualizer, and progress colors locally from the current cover while retaining manual color settings
-- Independent metadata/progress entrance and exit animations: None, Fade, and four restrained Slide directions. Existing Grow, Shrink, Swing, and Tilt settings migrate to their closest Fade or Slide equivalent. Spotify artwork itself remains static.
+- Optional Chromagic mode derives solid panel, text, accent, visualizer, and progress colors locally from the current cover while retaining manual color settings. Its fixed Panel Cascade softens palette changes by updating adjacent panels in sequence.
+- Independent metadata/progress entrance and exit animations: None or Fade. Existing Grow, Shrink, Swing, Tilt, and Slide settings migrate to Fade. Spotify artwork itself remains static.
 - Local and optional Google fonts
 - Hide on pause
 - Song-change-only visibility
@@ -291,7 +294,7 @@ Recommended source dimensions:
 | Layout | Width | Height | FPS |
 |---|---:|---:|---:|
 | Boxy | 740 px | 128 px | 30 |
-| Compact | 600 px | 200 px | 30 |
+| Compact | 600 px | 240 px | 30 |
 | Minimal | 800 px | 100 px | 30 |
 | Portrait with square cover | 420 px | 640 px | 30 |
 | Portrait without cover | 420 px | 244 px | 30 |
@@ -593,15 +596,16 @@ MusicWidget/
 ├── src/
 │   ├── client/
 │   │   ├── assets/                Local Spotify attribution assets
-│   │   ├── dashboard/             React interface and dashboard locale files
-│   │   ├── widget/                Preact OBS widget and status locale files
-│   │   └── local-fonts.css        Local font declarations
+│   │   ├── dashboard/             React UI, Atomic components, locales, and SCSS
+│   │   ├── widget/                Preact UI, Atomic components, locales, and SCSS
+│   │   └── styles/                Shared local font declarations
 │   ├── server/                    Fastify, Spotify, config, and lifecycle code
 │   └── shared/                    Shared schemas, parsers, dimensions, and message types
 ├── tests/                         Focused Node.js tests
 ├── .gitattributes                 Cross-platform text and VBS line endings
 ├── .gitignore                     Dependencies, builds, and private runtime data
 ├── AGENTS.md                      Repository guidance for coding agents
+├── CHANGELOG.md                   Release and unreleased change history
 ├── LICENSE                        PolyForm terms and streaming permission
 ├── dashboard.html
 ├── widget.html

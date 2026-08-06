@@ -1,0 +1,142 @@
+// Molecules: layout, cover, and theme choices
+
+.choice-grid {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 24px;
+  &.layouts {
+    grid-template-columns: repeat(4, minmax(110px, 180px));
+  }
+  &.theme-grid,
+  &.cover-grid {
+    grid-template-columns: repeat(2, 96px);
+  }
+}
+.layout-icon {
+  width: 61px;
+  height: 28px;
+  display: flex;
+  gap: 4px;
+  i {
+    display: block;
+    border-radius: 2px;
+    background: #dfe0e4;
+    &:first-child {
+      width: 26px;
+    }
+    &:nth-child(2) {
+      flex: 1;
+      height: 8px;
+    }
+    &:last-child {
+      flex: 1;
+      height: 5px;
+      margin-top: 13px;
+      margin-left: -31px;
+    }
+  }
+  &.compact {
+    align-items: end;
+    i:first-child {
+      height: 18px;
+    }
+    i:nth-child(2) {
+      height: 12px;
+    }
+  }
+  &.boxy i:first-child {
+    height: 28px;
+  }
+  &.portrait {
+    width: 34px;
+    height: 48px;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    i:first-child {
+      width: 30px;
+      height: 30px;
+    }
+    i:nth-child(2) {
+      width: 30px;
+      height: 7px;
+      flex: none;
+    }
+    i:last-child {
+      width: 30px;
+      height: 5px;
+      flex: none;
+      margin: 0;
+    }
+  }
+  &.minimal {
+    width: 66px;
+    height: 22px;
+    align-items: center;
+    i:first-child {
+      width: 18px;
+      height: 18px;
+    }
+    i:nth-child(2) {
+      height: 7px;
+    }
+    i:last-child {
+      width: 18px;
+      height: 5px;
+      flex: none;
+      margin: 0;
+    }
+  }
+}
+.cover-mode-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: #a5a9b4;
+  &.square {
+    background: #e1e2e6;
+    box-shadow: inset 0 0 0 1px #fff4;
+  }
+  &.none {
+    background: #d8d9dd;
+    color: #8c9099;
+  }
+  .ui-icon {
+    width: 26px;
+    height: 26px;
+  }
+}
+.theme-icon {
+  width: 58px;
+  height: 40px;
+  border-radius: 5px;
+  padding: 7px;
+  display: grid;
+  grid-template-columns: 17px 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 4px;
+  background: #383a41;
+  &.light {
+    color: #15161b;
+    background: #e4e5e8;
+  }
+  b {
+    grid-row: span 2;
+    display: grid;
+    place-items: center;
+    border-radius: 3px;
+    background: #f0f0f2;
+    color: #191a1f;
+    .ui-icon {
+      width: 12px;
+      height: 12px;
+    }
+  }
+  span {
+    border-radius: 2px;
+    background: currentColor;
+    opacity: 0.8;
+  }
+}

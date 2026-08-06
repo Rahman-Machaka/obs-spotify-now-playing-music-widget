@@ -18,7 +18,7 @@ const designDimensions: Record<Preset["layout"], LayoutDimensions> = {
 
 const recommendedSourceDimensions: Record<Preset["layout"], LayoutDimensions> = {
   boxy: { width: 740, height: 128 },
-  compact: { width: 600, height: 200 },
+  compact: { width: 600, height: 240 },
   portrait: { width: 420, height: 640 },
   minimal: { width: 800, height: 100 }
 };

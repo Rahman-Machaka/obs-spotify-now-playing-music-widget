@@ -1,0 +1,165 @@
+// Molecules: Chromagic and manual appearance controls
+
+.chromagic-setting {
+  margin-bottom: 18px;
+  padding: 15px 16px;
+  border: 1px solid #583875;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #211729, #17151d);
+
+  strong {
+    color: #d9b6f4;
+  }
+}
+.palette-manual-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  transition: opacity 0.18s ease;
+
+  &:disabled {
+    opacity: 0.42;
+
+    button,
+    input,
+    .custom-color,
+    .color-picker {
+      cursor: not-allowed;
+    }
+  }
+}
+.palette-style-fields {
+  opacity: 1;
+
+  &:disabled {
+    opacity: 0.42;
+  }
+}
+.custom-color {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 33px;
+  height: 33px;
+  border: 0;
+  border-radius: 7px;
+  background: #22252e;
+  color: #d8d9df;
+  cursor: pointer;
+  transition: transform 0.15s;
+
+  .ui-icon {
+    width: 17px;
+    height: 17px;
+  }
+
+  input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+.style-card {
+  margin-top: 26px;
+  padding: 0 16px 16px;
+  border: 1px solid #2b2e38;
+  border-radius: 12px;
+  background: #13151b;
+}
+.widget-surface-controls {
+  padding: 16px 0;
+
+  > small {
+    display: block;
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+}
+.widget-style-controls {
+  padding: 0 0 14px;
+  border-top: 1px solid #252832;
+
+  > .color-setting {
+    border-top: 0;
+  }
+
+  .range-field {
+    margin-top: 12px;
+  }
+}
+.text-style-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  transition: opacity 0.18s ease;
+
+  &:disabled {
+    opacity: 0.42;
+  }
+}
+.color-setting {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 1px solid #252832;
+
+  > div:first-child {
+    min-width: 0;
+  }
+
+  strong,
+  small {
+    display: block;
+  }
+
+  strong {
+    color: #aeb2c0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  small {
+    max-width: 430px;
+    margin-top: 5px;
+    line-height: 1.4;
+  }
+}
+.color-setting-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+
+  code {
+    color: #b9bdc9;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .text-button {
+    white-space: nowrap;
+  }
+}
+.shadow-controls {
+  padding-bottom: 12px;
+  border-top: 1px solid #252832;
+
+  > .color-setting {
+    border-top: 0;
+  }
+
+  .range-field {
+    margin-top: 12px;
+  }
+}

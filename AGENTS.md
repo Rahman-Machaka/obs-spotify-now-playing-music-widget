@@ -41,7 +41,7 @@ user explicitly requests it.
 - WebSockets for live configuration and playback updates
 - Windows DPAPI for Spotify token protection
 - JSON for persistent configuration
-- Plain CSS for the existing interface and widget layouts
+- SCSS compiled by Vite for the dashboard and widget layouts
 
 Do not replace these technologies or add another frontend, CSS, state-management,
 database, or server framework without explicit approval.
@@ -59,7 +59,7 @@ src/
       locales/           Dashboard translations
     widget/              Preact OBS widget
       locales/           Widget status translations
-    local-fonts.css      Bundled local font declarations
+    styles/              Shared SCSS resources such as local font declarations
   server/                Fastify, Spotify, storage, and lifecycle code
   shared/                Shared schemas and message types
 
@@ -339,6 +339,8 @@ src/client/widget/locales/
   the dashboard design.
 - Keep the live preview fully visible and correctly scaled.
 - Do not crop the preview.
+- Organize desktop settings into accessible category tabs so the page itself
+  stays fixed while the active settings pane scrolls.
 - Show the recommended OBS source width, height, and frame rate for the selected
   layout.
 
@@ -449,13 +451,9 @@ Supported entrance and exit animation choices are:
 
 - None
 - Fade
-- Slide left
-- Slide right
-- Slide top
-- Slide bottom
 
-Legacy Grow, Shrink, Swing, and Tilt values are migrated to the closest Fade
-or Slide choice when existing configuration is loaded.
+Legacy Grow, Shrink, Swing, Tilt, and Slide values are migrated to Fade when
+existing configuration is loaded.
 
 Requirements:
 
@@ -466,6 +464,9 @@ Requirements:
 - Do not animate album artwork in ways that conflict with Spotify content
   requirements.
 - Respect reduced-motion preferences for non-essential movement.
+
+Chromagic uses Panel Cascade as its fixed palette transition. Do not expose a
+palette-transition selector in the dashboard.
 
 ## Visualizer
 
@@ -481,7 +482,12 @@ The visualizer is decorative and does not represent real audio amplitude.
 
 ## Styling
 
-- Continue using the existing CSS architecture.
+- Keep SCSS organized through the existing Atomic Design folders: abstracts,
+  base, atoms, molecules, organisms, layouts, and utilities where applicable.
+- Use Sass `@use`; do not introduce legacy Sass `@import` statements.
+- Use shallow nesting for component-owned descendants, states, and pseudo-elements.
+  Keep reusable classes independent and avoid nesting deeper than three levels.
+- Keep generated CSS in the Vite build output rather than beside source SCSS.
 - Reuse current tokens, spacing, radii, colors, shadows, and control patterns.
 - Keep dashboard and widget styles separate.
 - Do not add inline styles for static presentation when a CSS class fits.

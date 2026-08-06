@@ -3,18 +3,22 @@ import { MAIN_PRESET_ID, MAX_PRESET_COUNT } from "./profiles.js";
 
 export const LayoutSchema = z.enum(["compact", "boxy", "portrait", "minimal"]);
 export const ThemeSchema = z.enum(["dark", "light"]);
-const legacyAnimationMap: Record<string, "fade" | "slide-left" | "slide-right"> = {
+const legacyAnimationMap: Record<string, "fade"> = {
   grow: "fade",
   shrink: "fade",
-  "swing-left": "slide-left",
-  "tilt-left": "slide-left",
-  "swing-right": "slide-right",
-  "tilt-right": "slide-right"
+  "swing-left": "fade",
+  "tilt-left": "fade",
+  "swing-right": "fade",
+  "tilt-right": "fade",
+  "slide-left": "fade",
+  "slide-right": "fade",
+  "slide-top": "fade",
+  "slide-bottom": "fade"
 };
 
 export const AnimationSchema = z.preprocess(
   (animation) => typeof animation === "string" ? legacyAnimationMap[animation] ?? animation : animation,
-  z.enum(["none", "fade", "slide-left", "slide-right", "slide-top", "slide-bottom"])
+  z.enum(["none", "fade"])
 );
 export const CoverModeSchema = z.enum(["square", "none"]);
 const HexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -231,7 +235,7 @@ export const defaultConfig: AppConfig = {
         visibleDurationSeconds: 8
       },
       visualizer: { visible: true },
-      animations: { enter: "slide-left", exit: "fade" },
+      animations: { enter: "fade", exit: "fade" },
       emptyState: {
         title: "Nothing Playing",
         artist: "Start the music",

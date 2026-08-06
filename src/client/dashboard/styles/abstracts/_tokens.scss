@@ -1,0 +1,21 @@
+$font-body: Inter, system-ui, sans-serif;
+$font-heading: Poppins, sans-serif;
+$color-canvas: #0c0d12;
+$color-text: #f4f5fa;
+$color-muted: #8f94a5;
+$color-focus: #bd83f0;
+$color-accent: #9d61dc;
+$color-border: #252832;
+$color-surface: #101116e8;
+$radius-panel: 18px;
+$motion-fast: 0.18s ease;
+
+:root {
+  --dashboard-color-accent: #{$color-accent};
+  --dashboard-color-border: #{$color-border};
+  --dashboard-color-muted: #{$color-muted};
+  --dashboard-color-surface: #{$color-surface};
+  --dashboard-color-text: #{$color-text};
+  --dashboard-focus: #{$color-focus};
+  --dashboard-panel-radius: #{$radius-panel};
+}

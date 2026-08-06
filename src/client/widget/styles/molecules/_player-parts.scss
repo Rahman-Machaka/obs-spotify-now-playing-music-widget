@@ -1,0 +1,244 @@
+// Molecules: artwork, metadata, attribution, progress, and visualizer
+
+.panel {
+  min-width: 0;
+  overflow: hidden;
+  border: var(--widget-outline-width) solid var(--widget-outline-color);
+  border-radius: 12px;
+  background: color-mix(
+    in srgb,
+    var(--panel) var(--surface-opacity),
+    transparent
+  );
+  box-shadow: var(--widget-drop-shadow), var(--widget-inset-outline);
+}
+.cover {
+  position: relative;
+  width: auto;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  margin-right: 8px;
+  transition:
+    margin 0.36s cubic-bezier(0.2, 0, 0, 1),
+    visibility 0s 0.36s;
+
+  .widget.without-cover > & {
+    visibility: hidden;
+    margin-right: 0;
+    transition-delay: 0s;
+  }
+
+  &.panel {
+    border-radius: 8px;
+  }
+
+  img,
+  video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  .idle-media {
+    transform-origin: center;
+  }
+}
+.cover-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--accent);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--accent) 22%, var(--panel)),
+    var(--panel)
+  );
+
+  svg {
+    width: 36%;
+    height: 36%;
+  }
+}
+.metadata {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+  padding: 10px 18px;
+
+  &.cover-tint {
+    background: radial-gradient(
+      circle at 12% 50%,
+      color-mix(
+          in srgb,
+          color-mix(in srgb, var(--cover-color) 74%, var(--panel))
+            var(--surface-opacity),
+          transparent
+        )
+        0%,
+      color-mix(
+          in srgb,
+          color-mix(in srgb, var(--cover-color) 32%, var(--panel))
+            var(--surface-opacity),
+          transparent
+        )
+        42%,
+      color-mix(in srgb, var(--panel) var(--surface-opacity), transparent) 100%
+    );
+    box-shadow:
+      inset 0 0 30px color-mix(in srgb, var(--cover-color) 25%, transparent),
+      var(--widget-drop-shadow),
+      var(--widget-inset-outline);
+  }
+}
+.copy {
+  width: 100%;
+  min-width: 0;
+}
+.scroll-viewport {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  filter: var(--text-filter, none);
+
+  strong,
+  .artist {
+    display: inline-block;
+    min-width: max-content;
+    white-space: nowrap;
+    will-change: transform;
+  }
+
+  &.title {
+    height: 24px;
+  }
+  &.artist {
+    height: 18px;
+    margin-top: 3px;
+  }
+  strong {
+    font-size: 19px;
+    line-height: 24px;
+    font-weight: 700;
+  }
+}
+.artist {
+  color: var(--artist-text, var(--muted));
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 500;
+}
+.time-row {
+  text-shadow: var(--text-shadow, none);
+}
+.attribution-row {
+  min-height: calc(var(--spotify-logo-width) * 0.274);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.spotify-link {
+  flex: 0 0 var(--spotify-logo-width);
+  display: block;
+  width: var(--spotify-logo-width);
+  height: auto;
+  margin-left: auto;
+  text-decoration: none;
+
+  &:focus-visible {
+    border-radius: 2px;
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+  }
+}
+.spotify-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.logo-black {
+  display: none;
+}
+.theme-light {
+  .logo-white {
+    display: none;
+  }
+  .logo-black {
+    display: block;
+  }
+}
+.progress-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: 4px;
+  padding: 19px 25px;
+}
+.time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.progress-track {
+  height: 8px;
+  margin-top: 13px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--progress-track, #f5f5f5);
+  box-shadow: inset 0 1px 2px #0005;
+
+  i {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.25s linear;
+    will-change: transform;
+  }
+}
+.progress-thumb {
+  display: none;
+}
+.visualizer {
+  height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+
+  i {
+    width: 4px;
+    height: 35%;
+    border-radius: 4px;
+    background: currentColor;
+    transform: scaleY(0.6);
+    transform-origin: center;
+  }
+
+  &.playing i {
+    animation: bounce 0.85s ease-in-out infinite alternate;
+    animation-delay: calc(var(--bar-index, 0) * -0.13s);
+  }
+}
+@keyframes bounce {
+  0% {
+    transform: scaleY(0.4);
+  }
+  100% {
+    transform: scaleY(1.35);
+  }
+}

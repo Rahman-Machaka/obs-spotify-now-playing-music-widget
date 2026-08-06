@@ -1,0 +1,175 @@
+// Utilities: visibility and Chromagic motion
+
+.is-hidden {
+  pointer-events: none;
+
+  &.layout-minimal::before {
+    opacity: 0;
+  }
+  > .cover {
+    visibility: hidden;
+    transition-delay: 0.18s;
+  }
+  > :is(.metadata, .progress-panel, .minimal-attribution) {
+    opacity: 0;
+  }
+  &.exit-none > .cover {
+    transition-delay: 0s;
+  }
+  &.exit-fade {
+    > :is(.metadata, .progress-panel, .minimal-attribution) {
+      animation: hide-fade 0.38s ease-in both;
+    }
+    &.layout-minimal::before {
+      animation: hide-fade 0.38s ease-in both;
+    }
+  }
+}
+
+.is-visible {
+  &.layout-minimal::before {
+    opacity: 1;
+  }
+  &.with-cover > .cover {
+    visibility: visible;
+    transition-delay: 0.18s;
+  }
+  > :is(.metadata, .progress-panel, .minimal-attribution) {
+    opacity: 1;
+  }
+  &.enter-none.with-cover > .cover {
+    transition-delay: 0s;
+  }
+  &.enter-fade {
+    > :is(.metadata, .progress-panel, .minimal-attribution) {
+      animation: reveal-fade 0.45s ease-out both;
+    }
+    &.layout-minimal::before {
+      animation: reveal-fade 0.45s ease-out both;
+    }
+  }
+}
+@keyframes reveal-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes hide-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.cover-palette {
+  &.palette-cycle-a.palette-transition-cascade {
+    --palette-wash-animation: palette-cascade-a;
+  }
+  &.palette-cycle-b.palette-transition-cascade {
+    --palette-wash-animation: palette-cascade-b;
+  }
+
+  &:is(.layout-boxy, .layout-portrait) :is(.metadata, .progress-panel),
+  &.layout-compact :is(.metadata, .time-row) {
+    position: relative;
+    isolation: isolate;
+
+    > * {
+      position: relative;
+      z-index: 1;
+    }
+    &::after {
+      position: absolute;
+      inset: var(--widget-outline-width);
+      z-index: 0;
+      border-radius: inherit;
+      content: "";
+      pointer-events: none;
+      background: color-mix(
+        in srgb,
+        var(--previous-panel) var(--surface-opacity),
+        transparent
+      );
+      animation: var(--palette-wash-animation) 1.05s
+        cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+  }
+
+  &.layout-minimal {
+    &::after {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      border-radius: 24px;
+      content: "";
+      pointer-events: none;
+      background: color-mix(
+        in srgb,
+        var(--previous-panel) var(--surface-opacity),
+        transparent
+      );
+      animation: var(--palette-wash-animation) 1.05s
+        cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+    .progress-thumb {
+      transition:
+        left 0.25s linear,
+        background-color 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  }
+
+  &.palette-transition-cascade {
+    &:is(.layout-boxy, .layout-portrait) .progress-panel::after,
+    &.layout-compact .time-row::after {
+      animation-delay: 0.14s;
+    }
+  }
+
+  :is(.scroll-viewport strong, .artist, .time-row, .visualizer) {
+    transition: color 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .progress-track {
+    transition: background-color 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+    i {
+      transition:
+        transform 0.25s linear,
+        background-color 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  }
+}
+@keyframes palette-cascade-a {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes palette-cascade-b {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .widget-status,
+  .widget,
+  .widget *,
+  .widget::before,
+  .widget::after,
+  .widget *::before,
+  .widget *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .cover-palette:is(.layout-boxy, .layout-portrait)
+    :is(.metadata, .progress-panel)::after,
+  .cover-palette.layout-compact :is(.metadata, .time-row)::after,
+  .cover-palette.layout-minimal::after {
+    display: none;
+  }
+}

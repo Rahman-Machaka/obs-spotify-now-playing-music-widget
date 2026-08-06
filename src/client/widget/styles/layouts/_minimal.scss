@@ -1,0 +1,173 @@
+// Template: Minimal layout
+
+.layout-minimal {
+  position: relative;
+  grid-template-columns: 60px minmax(0, 1fr) calc(
+      var(--spotify-logo-width) + 40px
+    ) auto;
+  grid-template-rows: 1fr;
+  padding: 10px 14px;
+  overflow: visible;
+
+  &::before {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border: var(--widget-outline-width) solid var(--widget-outline-color);
+    border-radius: 24px;
+    content: "";
+    background: color-mix(
+      in srgb,
+      var(--panel) var(--surface-opacity),
+      transparent
+    );
+    box-shadow: var(--widget-drop-shadow), var(--widget-inset-outline);
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  &.without-cover {
+    grid-template-columns: 0 minmax(0, 1fr) calc(
+        var(--spotify-logo-width) + 40px
+      ) auto;
+    .cover {
+      margin-right: 0;
+    }
+  }
+
+  .cover {
+    grid-column: 1;
+    width: 44px;
+    height: 44px;
+    place-self: center start;
+    margin-right: 16px;
+    border-radius: 4px;
+    box-shadow: none;
+
+    img,
+    video {
+      border-radius: 4px;
+    }
+  }
+
+  .metadata {
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0 24px 0 16px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+
+    &:not(.cover-tint) {
+      background: transparent;
+    }
+    &.cover-tint {
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .attribution-row {
+      display: none;
+    }
+  }
+
+  .copy {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    &::before {
+      order: 2;
+      flex: 0 0 1px;
+      width: 1px;
+      height: calc(var(--spotify-logo-width) * 0.274);
+      content: "";
+      background: color-mix(in srgb, var(--muted) 32%, transparent);
+    }
+  }
+
+  .scroll-viewport {
+    height: 28px;
+    margin: 0;
+
+    &.title {
+      order: 1;
+      flex: 0 1 auto;
+      width: auto;
+      max-width: 50%;
+    }
+    &.artist {
+      order: 3;
+      flex: 1 1 0;
+      width: auto;
+    }
+    strong {
+      font-size: 18px;
+      line-height: 28px;
+      font-weight: 700;
+    }
+  }
+
+  .artist {
+    font-size: 18px;
+    line-height: 28px;
+    font-weight: 700;
+  }
+  .minimal-attribution {
+    grid-column: 4;
+    grid-row: 1;
+    align-self: center;
+    margin: 0 0 0 6px;
+    padding-left: 20px;
+    border-left: 1px solid color-mix(in srgb, var(--muted) 32%, transparent);
+  }
+  .spotify-link {
+    margin-left: 0;
+  }
+
+  .progress-panel {
+    grid-column: 3;
+    display: flex;
+    justify-content: center;
+    margin: 0;
+    padding: 0 14px 0 18px;
+    overflow: visible;
+    border: 0;
+    border-left: 1px solid color-mix(in srgb, var(--muted) 24%, transparent);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .time-row {
+    display: none;
+  }
+  .progress-track {
+    position: relative;
+    width: 100%;
+    height: 10px;
+    margin: 0;
+    overflow: visible;
+  }
+  .progress-thumb {
+    position: absolute;
+    top: 50%;
+    display: block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    transform: translate(-50%, -50%);
+    transition: left 0.25s linear;
+    box-shadow: 0 1px 3px #0005;
+  }
+
+  &.theme-light .progress-track {
+    background: var(--progress-track, #cfd2d8);
+  }
+}

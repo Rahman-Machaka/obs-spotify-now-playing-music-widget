@@ -1,0 +1,45 @@
+// Organism: widget surface and theme shell
+
+.widget {
+  --panel: #141519;
+  --text: #f6f6f7;
+  --muted: #b5b5bd;
+  --panel-border: #ffffff18;
+  --panel-inset: #0003;
+  --panel-shadow: #0008;
+  --surface-opacity: 100%;
+  --widget-outline-width: 1px;
+  --widget-outline-color: var(--panel-border);
+  --widget-drop-shadow: 0 4px 9px var(--panel-shadow);
+  --widget-inset-outline: inset 0 0 0 1px var(--panel-inset);
+  display: grid;
+  grid-template-columns: 108px repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  color: var(--text);
+  font-family: var(--font), system-ui, sans-serif;
+  opacity: 1;
+  transform-origin: center;
+  transition:
+    grid-template-columns 0.36s cubic-bezier(0.2, 0, 0, 1),
+    grid-template-rows 0.36s cubic-bezier(0.2, 0, 0, 1),
+    opacity 0.3s ease;
+
+  &.is-idle {
+    opacity: var(--idle-opacity);
+  }
+  &.without-cover {
+    grid-template-columns: 0 repeat(2, minmax(0, 1fr));
+  }
+  &.theme-light {
+    --panel: #f0f1f3;
+    --text: #14151a;
+    --muted: #62646c;
+    --panel-border: #00000026;
+    --panel-inset: #ffffffa0;
+    --panel-shadow: #0003;
+  }
+}

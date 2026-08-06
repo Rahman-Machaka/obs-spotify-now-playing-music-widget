@@ -24,7 +24,7 @@ test("Google Fonts URLs are parsed only from supported HTTPS hosts", () => {
 });
 
 test("layout dimensions include compact, portrait, and minimal variants", () => {
-  assert.deepEqual(getRecommendedSourceDimensions("compact", "square"), { width: 600, height: 200 });
+  assert.deepEqual(getRecommendedSourceDimensions("compact", "square"), { width: 600, height: 240 });
   assert.deepEqual(getDesignDimensions("compact", "none"), { width: 570, height: 180 });
   assert.deepEqual(getRecommendedSourceDimensions("portrait", "none"), { width: 420, height: 244 });
   assert.deepEqual(getDesignDimensions("minimal", "square"), { width: 950, height: 64 });
@@ -60,6 +60,18 @@ test("cover palettes derive distinct readable surface, accent, track, and text c
   assert.notEqual(palette.track, palette.accent);
   assert.ok(getContrastRatio(palette.text, palette.surface) >= 4.5);
   assert.ok(getContrastRatio(palette.artistText, palette.surface) >= 4.5);
+});
+
+test("Chromagic uses its fixed panel-cascade mode without persisted animation options", () => {
+  const config = structuredClone(defaultConfig);
+  config.presets.main.coverPalette = { enabled: true, transition: "linear" };
+  assert.deepEqual(AppConfigSchema.parse(config).presets.main.coverPalette, { enabled: true });
+});
+
+test("legacy slide animations migrate to fade", () => {
+  const config = structuredClone(defaultConfig);
+  config.presets.main.animations = { enter: "slide-left", exit: "slide-bottom" };
+  assert.deepEqual(AppConfigSchema.parse(config).presets.main.animations, { enter: "fade", exit: "fade" });
 });
 
 test("playback progress ignores polling drift but preserves deliberate seeks", () => {
@@ -189,7 +201,7 @@ test("configuration migration preserves legacy values and invalid files", async 
     assert.equal(migrated.presets.main.layout, "minimal");
     assert.equal(migrated.presets.main.cover.mode, "none");
     assert.equal(migrated.presets.main.cover.glow, true);
-    assert.deepEqual(migrated.presets.main.animations, { enter: "fade", exit: "slide-right" });
+    assert.deepEqual(migrated.presets.main.animations, { enter: "fade", exit: "fade" });
     assert.equal(migrated.presets.main.emptyState.useLastPlayback, false);
     assert.deepEqual(migrated.presets.main.textStyle, {
       color: null,

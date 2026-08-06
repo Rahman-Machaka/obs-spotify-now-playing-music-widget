@@ -1,0 +1,52 @@
+// Template: Boxy layout
+
+.layout-boxy {
+  .progress-panel {
+    display: grid;
+    grid-template-rows: 24px 1fr 21px;
+    justify-content: stretch;
+    padding: 13px 18px;
+  }
+
+  .time-row {
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    width: 100%;
+    height: 24px;
+    gap: 12px;
+    font-size: 19px;
+    line-height: 24px;
+
+    > span {
+      &:first-child {
+        grid-column: 1;
+        justify-self: start;
+      }
+      &:last-child {
+        grid-column: 3;
+        justify-self: end;
+      }
+    }
+  }
+
+  .visualizer {
+    grid-column: 2;
+    justify-self: stretch;
+    width: 100%;
+    height: 24px;
+    justify-content: center;
+    gap: 4px;
+
+    i {
+      width: 4px;
+    }
+  }
+
+  .progress-track {
+    grid-row: 3;
+    align-self: center;
+    width: 100%;
+    margin-top: 0;
+  }
+}

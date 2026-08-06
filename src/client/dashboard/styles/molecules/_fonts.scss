@@ -1,0 +1,116 @@
+// Molecules: local and Google Font controls
+
+.font-picker {
+  margin-top: 25px;
+
+  .field-label.spaced {
+    margin-top: 0;
+  }
+}
+.google-font-card {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid #2b2e38;
+  border-radius: 12px;
+  background: #13151b;
+
+  ol {
+    margin: 15px 0;
+    padding-left: 20px;
+    color: #969baa;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+}
+.google-font-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+
+  strong,
+  small {
+    display: block;
+  }
+
+  strong {
+    font-size: 13px;
+  }
+
+  small {
+    margin-top: 4px;
+  }
+
+  a {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #bc8ce8;
+    text-decoration: none;
+    font-size: 12px;
+  }
+}
+.font-url-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+
+  input {
+    min-width: 0;
+  }
+
+  .secondary-button {
+    flex: 0 0 auto;
+    min-height: 46px;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    border: 1px solid #76509a;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+}
+.font-error {
+  margin: 9px 0 0;
+  color: #ff7886;
+  font-size: 11px;
+}
+.selected-google-font {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #9d61dc12;
+
+  span {
+    color: #9b79bd;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+  }
+
+  strong {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 14px;
+  }
+}
+.privacy-note {
+  margin: 12px 0 0;
+  color: #7f8494;
+  font-size: 10px;
+  line-height: 1.5;
+
+  code {
+    color: #a9acb8;
+  }
+}

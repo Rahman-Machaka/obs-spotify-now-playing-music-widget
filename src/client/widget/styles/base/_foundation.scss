@@ -1,0 +1,37 @@
+// Base: transparent OBS canvas and safe scaling area
+
+:root {
+  color-scheme: dark;
+  background: transparent;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#widget-root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+#widget-root {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.widget-safe-area {
+  position: absolute;
+  inset: 5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.widget-scale {
+  flex: none;
+  transform-origin: center;
+  transition:
+    width 0.36s cubic-bezier(0.2, 0, 0, 1),
+    height 0.36s cubic-bezier(0.2, 0, 0, 1);
+}

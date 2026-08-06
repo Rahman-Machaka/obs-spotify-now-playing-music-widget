@@ -11,7 +11,7 @@ const edgePath = process.env.EDGE_PATH ?? "C:\\Program Files (x86)\\Microsoft\\E
 const ffmpegPath = process.env.FFMPEG_PATH ?? "ffmpeg";
 const layouts = {
   boxy: { width: 740, height: 128 },
-  compact: { width: 600, height: 200 },
+  compact: { width: 600, height: 240 },
   portrait: { width: 420, height: 640 },
   minimal: { width: 800, height: 100 }
 };
@@ -57,7 +57,7 @@ const demoScript = `(() => {
     cover: { mode: "square", glow: false },
     visibility: { hideOnPause: false, hideDelaySeconds: 0, songChangeOnly: false, visibleDurationSeconds: 8 },
     visualizer: { visible: true },
-    animations: { enter: "slide-left", exit: "fade" },
+    animations: { enter: "fade", exit: "fade" },
     emptyState: {
       title: "Nothing Playing",
       artist: "Start the music",
@@ -158,7 +158,7 @@ const demoScript = `(() => {
         ...config.presets.main,
         visualizer: { visible: false },
         visibility: { ...config.presets.main.visibility, hideOnPause: true, hideDelaySeconds: 0 },
-        animations: { enter: "slide-left", exit: "fade" }
+        animations: { enter: "fade", exit: "fade" }
       } } };
       broadcast({ type: "config", config });
     }
@@ -333,7 +333,7 @@ async function ensureCaptureServer(temporaryDirectory) {
         cover: { mode: "square", glow: false },
         visibility: { hideOnPause: false, hideDelaySeconds: 0, songChangeOnly: false, visibleDurationSeconds: 8 },
         visualizer: { visible: true },
-        animations: { enter: "slide-left", exit: "fade" },
+        animations: { enter: "fade", exit: "fade" },
         emptyState: {
           title: "Nothing Playing",
           artist: "Start the music",
@@ -391,7 +391,7 @@ async function main() {
     await client.send("Page.enable");
     await client.send("Runtime.enable");
     await client.send("Fetch.enable", { patterns: [{ urlPattern: "*api/cover/current*", requestStage: "Request" }] });
-    client.on("Fetch.requestPaused", ({ requestId }) => {
+    client.on("Fetch.requestPaused", async ({ requestId, request }) => {
       void client.send("Fetch.fulfillRequest", {
         requestId,
         responseCode: 200,
@@ -423,24 +423,41 @@ async function main() {
       expression: "getComputedStyle(document.querySelector('.widget .metadata')).animationName",
       returnByValue: true
     })).result.value;
-    if (startupAnimation !== "reveal-slide-left") {
+    if (startupAnimation !== "reveal-fade") {
       throw new Error("The widget did not use the selected entrance animation after startup.");
     }
 
     await navigate(client, "/dashboard", 1600, 1000, ".app-shell");
+    const dashboardGeometry = (await client.send("Runtime.evaluate", {
+      expression: `(() => ({
+        pageFits: document.documentElement.scrollHeight <= innerHeight + 1,
+        tabs: document.querySelectorAll('[role="tab"]').length,
+        selectedTabs: document.querySelectorAll('[role="tab"][aria-selected="true"]').length,
+        panels: document.querySelectorAll('[role="tabpanel"]').length,
+        previewVisible: document.querySelector('.preview-panel').getBoundingClientRect().bottom <= innerHeight
+      }))()`,
+      returnByValue: true
+    })).result.value;
+    if (!dashboardGeometry.pageFits || dashboardGeometry.tabs !== 6 || dashboardGeometry.selectedTabs !== 1
+      || dashboardGeometry.panels !== 1 || !dashboardGeometry.previewVisible) {
+      throw new Error(`The tabbed dashboard workspace did not fit the desktop viewport: ${JSON.stringify(dashboardGeometry)}`);
+    }
     await capture(client, join(outputDirectory, "dashboard.png"));
-    await client.send("Runtime.evaluate", { expression: `
-      [...document.querySelectorAll("section h2")]
-        .find((heading) => heading.textContent?.trim() === "Colors")
-        ?.closest("section")
-        ?.scrollIntoView({ block: "start" });
-      window.scrollBy(0, -20);
-    ` });
-    await client.send("Emulation.setDeviceMetricsOverride", { width: 1600, height: 1400, deviceScaleFactor: 1, mobile: false });
+    await client.send("Runtime.evaluate", { expression: "document.querySelector('[data-dashboard-tab=motion]').click()" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const animationChoices = (await client.send("Runtime.evaluate", {
+      expression: "[...document.querySelectorAll('.animation-grid')].map((grid) => grid.children.length)",
+      returnByValue: true
+    })).result.value;
+    if (animationChoices.length !== 2 || animationChoices.some((count) => count !== 2)) {
+      throw new Error(`The dashboard exposed animation choices other than None and Fade: ${JSON.stringify(animationChoices)}`);
+    }
+    await client.send("Runtime.evaluate", { expression: "document.querySelector('[data-dashboard-tab=colors]').click()" });
     await new Promise((resolve) => setTimeout(resolve, 250));
-    await capture(client, join(outputDirectory, "dashboard-colors.png"));
     await client.send("Runtime.evaluate", { expression: "document.querySelector('.chromagic-setting .toggle').click()" });
     await new Promise((resolve) => setTimeout(resolve, 100));
+    await client.send("Runtime.evaluate", { expression: "window.scrollTo(0, 0)" });
+    await capture(client, join(outputDirectory, "dashboard-colors.png"));
     const chromagicControlState = (await client.send("Runtime.evaluate", {
       expression: `(() => {
         const toggle = document.querySelector(".chromagic-setting .toggle");
@@ -465,6 +482,91 @@ async function main() {
     for (const [layout, dimensions] of Object.entries(layouts)) {
       await navigate(client, `/widget?captureLayout=${layout}`, dimensions.width, dimensions.height, ".widget.is-visible .cover img", true);
       await capture(client, join(outputDirectory, `layout-${layout}.png`));
+      const layoutGeometry = (await client.send("Runtime.evaluate", {
+        expression: `(() => {
+          const rect = (selector) => {
+            const bounds = document.querySelector(selector)?.getBoundingClientRect();
+            return bounds ? { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom, width: bounds.width, height: bounds.height } : null;
+          };
+          const centerY = (selector) => {
+            const bounds = document.querySelector(selector)?.getBoundingClientRect();
+            return bounds ? (bounds.top + bounds.bottom) / 2 : null;
+          };
+          return {
+            widget: rect(".widget"),
+            cover: rect(".cover"),
+            metadata: rect(".metadata"),
+            copy: rect(".metadata .copy"),
+            title: rect(".metadata .scroll-viewport.title"),
+            spotify: rect(".metadata .spotify-logo"),
+            progressPanel: rect(".progress-panel"),
+            timeRow: rect(".time-row"),
+            currentTime: rect(".time-row > span:first-child"),
+            duration: rect(".time-row > span:last-child"),
+            visualizer: rect(".visualizer"),
+            progressTrack: rect(".progress-track"),
+            minimalAttribution: rect(".minimal-attribution"),
+            centers: {
+              widget: centerY(".widget"), cover: centerY(".cover"), metadata: centerY(".metadata"),
+              progressPanel: centerY(".progress-panel"), currentTime: centerY(".time-row > span:first-child"),
+              visualizer: centerY(".visualizer"), duration: centerY(".time-row > span:last-child"),
+              minimalAttribution: centerY(".minimal-attribution")
+            },
+            titleFontSize: getComputedStyle(document.querySelector(".scroll-viewport.title strong")).fontSize,
+            timeFontSize: getComputedStyle(document.querySelector(".time-row")).fontSize,
+            progressShadow: getComputedStyle(document.querySelector(".progress-track")).boxShadow,
+            progressBorderWidth: getComputedStyle(document.querySelector(".progress-track")).borderTopWidth,
+            progressBorderColor: getComputedStyle(document.querySelector(".progress-track")).borderTopColor
+          };
+        })()`,
+        returnByValue: true
+      })).result.value;
+      const approximatelyEqual = (first, second, tolerance = 1) => Math.abs(first - second) <= tolerance;
+      if (layout === "compact") {
+        const metadataInsets = [layoutGeometry.copy.left - layoutGeometry.metadata.left, layoutGeometry.metadata.right - layoutGeometry.copy.right];
+        const timeInsets = [layoutGeometry.currentTime.left - layoutGeometry.timeRow.left, layoutGeometry.timeRow.right - layoutGeometry.duration.right];
+        const metadataVerticalInsets = [layoutGeometry.title.top - layoutGeometry.metadata.top, layoutGeometry.metadata.bottom - layoutGeometry.spotify.bottom];
+        if (!metadataInsets.every((inset, index) => approximatelyEqual(inset, timeInsets[index], 1))
+          || !approximatelyEqual(metadataVerticalInsets[0], metadataVerticalInsets[1], 1)
+          || !approximatelyEqual(layoutGeometry.centers.currentTime, layoutGeometry.centers.visualizer, 1)
+          || !approximatelyEqual(layoutGeometry.centers.visualizer, layoutGeometry.centers.duration, 1)
+          || !approximatelyEqual(layoutGeometry.cover.top, layoutGeometry.metadata.top, 1)
+          || !approximatelyEqual(layoutGeometry.cover.bottom, layoutGeometry.timeRow.bottom, 1)
+          || !layoutGeometry.progressShadow.includes("4px 9px") || layoutGeometry.progressBorderWidth !== "1px") {
+          throw new Error(`Compact spacing, vertical alignment, or progress shadow is inconsistent: ${JSON.stringify({ metadataInsets, timeInsets, metadataVerticalInsets, ...layoutGeometry })}`);
+        }
+      }
+      if (layout === "boxy" && layoutGeometry.titleFontSize !== layoutGeometry.timeFontSize) {
+        throw new Error(`Boxy title and time font sizes differ: ${JSON.stringify({ titleFontSize: layoutGeometry.titleFontSize, timeFontSize: layoutGeometry.timeFontSize })}`);
+      }
+      if (layout === "portrait") {
+        const metadataInsets = [layoutGeometry.copy.left - layoutGeometry.metadata.left, layoutGeometry.metadata.right - layoutGeometry.copy.right];
+        const progressInsets = [layoutGeometry.currentTime.left - layoutGeometry.progressPanel.left, layoutGeometry.progressPanel.right - layoutGeometry.duration.right];
+        const trackInsets = [layoutGeometry.progressTrack.left - layoutGeometry.progressPanel.left, layoutGeometry.progressPanel.right - layoutGeometry.progressTrack.right];
+        if (![...progressInsets, ...trackInsets].every((inset, index) => approximatelyEqual(inset, metadataInsets[index % 2], 1))) {
+          throw new Error(`Portrait panel insets are inconsistent: ${JSON.stringify({ metadataInsets, progressInsets, trackInsets })}`);
+        }
+      }
+      if (layout === "minimal") {
+        const centered = [layoutGeometry.centers.cover, layoutGeometry.centers.metadata, layoutGeometry.centers.progressPanel, layoutGeometry.centers.minimalAttribution]
+          .every((center) => center === null || approximatelyEqual(center, layoutGeometry.centers.widget, 1));
+        if (!centered) throw new Error(`Minimal elements are not vertically centered: ${JSON.stringify(layoutGeometry.centers)}`);
+      }
+      await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.setCover('none')" });
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      const noCoverBounds = (await client.send("Runtime.evaluate", {
+        expression: `(() => {
+          const widget = document.querySelector(".widget").getBoundingClientRect();
+          return [...document.querySelectorAll(".metadata, .progress-panel")].every((element) => {
+            const bounds = element.getBoundingClientRect();
+            return bounds.left >= widget.left - 1 && bounds.right <= widget.right + 1 && bounds.top >= widget.top - 1 && bounds.bottom <= widget.bottom + 1;
+          });
+        })()`,
+        returnByValue: true
+      })).result.value;
+      if (!noCoverBounds) throw new Error(`${layout} panels leave the widget bounds when the cover is hidden.`);
+      await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.setCover('square')" });
+      await new Promise((resolve) => setTimeout(resolve, 450));
     }
 
     await navigate(client, "/widget?captureLayout=boxy", layouts.boxy.width, layouts.boxy.height, ".widget.is-visible .cover img", true);
@@ -608,7 +710,7 @@ async function main() {
       throw new Error("Automatic readability or the custom progress-track color was not applied.");
     }
     await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.updatePreset({ cover: { mode: 'square', glow: false }, coverPalette: { enabled: true } })" });
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 40));
     const chromagicPresentation = (await client.send("Runtime.evaluate", {
       expression: `(() => {
         const widget = document.querySelector(".widget");
@@ -622,16 +724,60 @@ async function main() {
           accent: widgetStyle.getPropertyValue("--accent").trim(),
           track: getComputedStyle(document.querySelector(".progress-track")).backgroundColor,
           text: getComputedStyle(document.querySelector(".scroll-viewport.title strong")).color,
-          backgroundImage: metadataStyle.backgroundImage
+          backgroundImage: metadataStyle.backgroundImage,
+          washAnimation: getComputedStyle(metadata, "::after").animationName
         };
       })()`,
       returnByValue: true
     })).result.value;
     if (!chromagicPresentation.active || chromagicPresentation.tinted || chromagicPresentation.backgroundImage !== "none"
       || chromagicPresentation.panel === "#141519" || chromagicPresentation.accent === "#e89b62"
-      || chromagicPresentation.track === "rgb(18, 52, 86)") {
+      || !chromagicPresentation.washAnimation.startsWith("palette-cascade")) {
       throw new Error(`Chromagic did not override the manual colors with a solid cover palette: ${JSON.stringify(chromagicPresentation)}`);
     }
+    const paletteTransition = (await client.send("Runtime.evaluate", {
+      expression: `(() => {
+        const classes = [...document.querySelector(".widget").classList];
+        return {
+          transition: classes.find((name) => name.startsWith("palette-transition-")),
+          cycle: classes.find((name) => name.startsWith("palette-cycle-")),
+          metadataOpacity: getComputedStyle(document.querySelector(".metadata"), "::after").opacity,
+          progressOpacity: getComputedStyle(document.querySelector(".progress-panel"), "::after").opacity
+        };
+      })()`,
+      returnByValue: true
+    })).result.value;
+    if (paletteTransition.transition !== "palette-transition-cascade" || !paletteTransition.cycle) {
+      throw new Error(`Chromagic did not use its fixed Panel Cascade: ${JSON.stringify(paletteTransition)}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const middlePaletteFrame = (await client.send("Runtime.evaluate", {
+      expression: `(() => ({
+        metadataOpacity: getComputedStyle(document.querySelector(".metadata"), "::after").opacity,
+        progressOpacity: getComputedStyle(document.querySelector(".progress-panel"), "::after").opacity
+      }))()`,
+      returnByValue: true
+    })).result.value;
+    if (paletteTransition.metadataOpacity === middlePaletteFrame.metadataOpacity
+      || Number(middlePaletteFrame.metadataOpacity) >= Number(middlePaletteFrame.progressOpacity)) {
+      throw new Error(`Panel Cascade did not fade panels in sequence: ${JSON.stringify({ paletteTransition, middlePaletteFrame })}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    const settledChromagicTrack = (await client.send("Runtime.evaluate", {
+      expression: "getComputedStyle(document.querySelector('.progress-track')).backgroundColor",
+      returnByValue: true
+    })).result.value;
+    if (settledChromagicTrack === "rgb(18, 52, 86)") {
+      throw new Error("Chromagic did not replace the retained manual progress-track color.");
+    }
+    await client.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+    const reducedMotionWashDisplay = (await client.send("Runtime.evaluate", {
+      expression: "getComputedStyle(document.querySelector('.metadata'), '::after').display",
+      returnByValue: true
+    })).result.value;
+    if (reducedMotionWashDisplay !== "none") throw new Error("Chromagic washes did not respect reduced-motion preferences.");
+    await client.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
+    await new Promise((resolve) => setTimeout(resolve, 1200));
     await capture(client, join(outputDirectory, "layout-chromagic.png"));
     await client.send("Runtime.evaluate", { expression: "window.__readmeDemo.updatePreset({ coverPalette: { enabled: false } })" });
     await new Promise((resolve) => setTimeout(resolve, 100));
